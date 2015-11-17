@@ -11,15 +11,14 @@ import std.experimental.logger;
 
 import daemonize.d;
 
-alias daemon = Daemon!(
-    "Test1",
-
+alias daemon = Daemon!("Test1",// dfmt off
     KeyValueList!(),
 
     (logger, shouldExit) {
         write("output.txt", "Hello World!");
         return 0;
     }
+    // dfmt on
 );
 
 int main()

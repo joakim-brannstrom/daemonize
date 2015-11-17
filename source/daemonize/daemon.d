@@ -14,7 +14,8 @@ import daemonize.keymap;
 import std.traits;
 import std.typetuple;
 
-static if( __VERSION__ < 2066 ) private enum nogc;
+static if (__VERSION__ < 2066)
+    private enum nogc;
 
 /**
 *   Native signals that can be hooked. There arn't all
@@ -32,23 +33,23 @@ static if( __VERSION__ < 2066 ) private enum nogc;
 enum Signal : string
 {
     // Linux native requests
-    Abort     = "Abort",
+    Abort = "Abort",
     Terminate = "Terminate",
-    Quit      = "Quit",
+    Quit = "Quit",
     Interrupt = "Interrupt",
-    HangUp    = "HangUp",
+    HangUp = "HangUp",
 
     // Windows native requests
-    Stop           = "Stop",
-    Continue       = "Continue",
-    Pause          = "Pause",
-    Shutdown       = "Shutdown",
-    Interrogate    = "Interrogate",
-    NetBindAdd     = "NetBindAdd",
+    Stop = "Stop",
+    Continue = "Continue",
+    Pause = "Pause",
+    Shutdown = "Shutdown",
+    Interrogate = "Interrogate",
+    NetBindAdd = "NetBindAdd",
     NetBindDisable = "NetBindDisable",
-    NetBindEnable  = "NetBindEnable",
-    NetBindRemove  = "NetBindRemove",
-    ParamChange    = "ParamChange",
+    NetBindEnable = "NetBindEnable",
+    NetBindRemove = "NetBindRemove",
+    ParamChange = "ParamChange",
 
 }
 
@@ -63,7 +64,7 @@ enum Signal : string
 */
 @nogc Signal customSignal(string name) @safe pure nothrow
 {
-    return cast(Signal)name;
+    return cast(Signal) name;
 }
 
 /**
@@ -82,22 +83,23 @@ template Composition(Signals...)
 
     template opEqual(T...)
     {
-        static if(T.length > 0 && isComposition!(T[0]))
+        static if (T.length > 0 && isComposition!(T[0]))
         {
             enum opEqual = [signals] == [T[0].signals];
         }
-        else enum opEqual = false;
+        else
+            enum opEqual = false;
     }
 }
 
 /// Checks if $(B T) is a composition of signals
 template isComposition(alias T)
 {
-    static if(__traits(compiles, T.signals))
+    static if (__traits(compiles, T.signals))
     {
         private template isSignal(T...)
         {
-            static if(is(T[0]))
+            static if (is(T[0]))
             {
                 enum isSignal = is(T[0] : Signal);
             }
@@ -109,7 +111,8 @@ template isComposition(alias T)
 
         enum isComposition = allSatisfy!(isSignal, T.signals);
     }
-    else enum isComposition = false;
+    else
+        enum isComposition = false;
 }
 
 /**
@@ -160,10 +163,7 @@ template isComposition(alias T)
 *   );
 *   -----------
 */
-template Daemon(
-    string name,
-    alias pSignalMap,
-    alias pMainFunc)
+template Daemon(string name, alias pSignalMap, alias pMainFunc)
 {
     enum daemonName = name;
     alias signalMap = pSignalMap;
@@ -173,8 +173,8 @@ template Daemon(
 /// Duck typing $(B Daemon) description
 template isDaemon(alias T)
 {
-    static if(__traits(compiles, T.daemonName) && __traits(compiles, T.signalMap)
-        && __traits(compiles, T.mainFunc))
+    static if (__traits(compiles, T.daemonName) && __traits(compiles,
+            T.signalMap) && __traits(compiles, T.mainFunc))
         enum isDaemon = is(typeof(T.daemonName) == string);
     else
         enum isDaemon = false;
@@ -235,16 +235,15 @@ template isDaemon(alias T)
 *   );
 *   ----------------
 */
-template DaemonClient(
-    string name,
-    Signals...)
+template DaemonClient(string name, Signals...)
 {
     private template isSignal(T...)
     {
         enum isSignal = is(typeof(T[0]) == Signal) || isComposition!(T[0]);
     }
 
-    static assert(allSatisfy!(isSignal, Signals), "All values of Signals parameter have to be of Signal type!");
+    static assert(allSatisfy!(isSignal, Signals),
+        "All values of Signals parameter have to be of Signal type!");
 
     enum daemonName = name;
     alias signals = Signals;
@@ -258,16 +257,15 @@ template isDaemonClient(alias T)
         enum isSignal = is(typeof(T[0]) == Signal) || isComposition!(T[0]);
     }
 
-    static if(__traits(compiles, T.daemonName) && __traits(compiles, T.signals))
-        enum isDaemonClient = is(typeof(T.daemonName) == string) && allSatisfy!(isSignal, T.signals);
+    static if (__traits(compiles, T.daemonName) && __traits(compiles, T.signals))
+        enum isDaemonClient = is(typeof(T.daemonName) == string)
+                && allSatisfy!(isSignal, T.signals);
     else
         enum isDaemonClient = false;
 }
+
 unittest
 {
-    alias TestClient = DaemonClient!(
-        "DaemonizeExample2",
-        Signal.Terminate,
-        Signal.HangUp);
+    alias TestClient = DaemonClient!("DaemonizeExample2", Signal.Terminate, Signal.HangUp);
     static assert(isDaemonClient!TestClient);
 }

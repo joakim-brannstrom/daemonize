@@ -10,7 +10,8 @@ enum testNumber = 2;
 void customShell(string command, lazy string error)
 {
     auto res = executeShell(command);
-    if(res.status != 0) throw new Exception(error ~ " " ~ res.output);
+    if (res.status != 0)
+        throw new Exception(error ~ " " ~ res.output);
 }
 
 void checkOutput(string filename, string expected)
@@ -27,7 +28,7 @@ void testPass(string expected, string buildVer)
 {
     customShell("dub run", "Failed to execute daemon!");
     Thread.sleep(100.dur!"msecs");
-    customShell("dub --config="~buildVer, "Failed to execute client part!");
+    customShell("dub --config=" ~ buildVer, "Failed to execute client part!");
     checkOutput("output.txt", expected);
 }
 

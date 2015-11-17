@@ -10,7 +10,8 @@ enum testNumber = 1;
 void customShell(string command, lazy string error)
 {
     auto res = executeShell(command);
-    if(res.status != 0) throw new Exception(error ~ " " ~ res.output);
+    if (res.status != 0)
+        throw new Exception(error ~ " " ~ res.output);
 }
 
 void checkOutput(string filename, string expected)

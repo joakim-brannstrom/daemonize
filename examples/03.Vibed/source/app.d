@@ -21,9 +21,8 @@ import vibe.core.log : setLogLevel, setLogFile, VibeLogLevel = LogLevel;
 import vibe.http.server;
 
 // Simple daemon description
-alias daemon = Daemon!(
-    "DaemonizeExample3", // unique name
-
+alias daemon = Daemon!("DaemonizeExample3", // unique name
+    // dfmt off
     KeyValueList!(
         Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger)
         {
@@ -52,11 +51,11 @@ alias daemon = Daemon!(
         // All exceptions are caught by daemonize
         return runEventLoop();
     }
+    // dfmt on
 );
 
 // Vibe handler
-void handleRequest(HTTPServerRequest req,
-                   HTTPServerResponse res)
+void handleRequest(HTTPServerRequest req, HTTPServerResponse res)
 {
     res.writeBody("Hello World!", "text/plain");
 }
@@ -66,17 +65,24 @@ int main()
     // Setting vibe logger
     // daemon closes stdout/stderr and vibe logger will crash
     // if not suppress printing to console
-    version(Windows) enum vibeLogName = "C:\\vibe.log";
-    else enum vibeLogName = "vibe.log";
+    version (Windows)
+        enum vibeLogName = "C:\\vibe.log";
+    else
+        enum vibeLogName = "vibe.log";
 
     // no stdout/stderr output
-    version(Windows) {}
-    else setLogLevel(VibeLogLevel.none);
+    version (Windows)
+    {
+    }
+    else
+        setLogLevel(VibeLogLevel.none);
 
     setLogFile(vibeLogName, VibeLogLevel.info);
 
-    version(Windows) enum logFileName = "C:\\logfile.log";
-    else enum logFileName = "logfile.log";
+    version (Windows)
+        enum logFileName = "C:\\logfile.log";
+    else
+        enum logFileName = "logfile.log";
 
     auto logger = new FileLogger(logFileName);
     return buildDaemon!daemon.run(logger);

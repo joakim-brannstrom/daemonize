@@ -11,11 +11,10 @@ import std.experimental.logger;
 
 import daemonize.d;
 
-version(Server)
+version (Server)
 {
-    alias daemon = Daemon!(
-        "Test2",
-
+    alias daemon = Daemon!("Test2",
+        // dfmt off
         KeyValueList!(
             Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (Logger logger, Signal signal)
             {
@@ -32,6 +31,7 @@ version(Server)
             while(!shouldExit()) {}
             return 0;
         }
+        // dfmt on
     );
 
     int main()
@@ -41,22 +41,24 @@ version(Server)
 }
 else
 {
-    alias daemon = DaemonClient!(
-        "Test2",
-        Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop),
-        Signal.HangUp
-    );
+    alias daemon = DaemonClient!("Test2", Composition!(Signal.Terminate,
+        Signal.Quit, Signal.Shutdown, Signal.Stop), Signal.HangUp);
 
     int main()
     {
         alias client = buildDaemon!daemon;
 
         Signal sig;
-        version(Test1) sig = Signal.Terminate;
-        version(Test2) sig = Signal.Quit;
-        version(Test3) sig = Signal.Shutdown;
-        version(Test4) sig = Signal.Stop;
-        version(Test5) sig = Signal.HangUp;
+        version (Test1)
+            sig = Signal.Terminate;
+        version (Test2)
+            sig = Signal.Quit;
+        version (Test3)
+            sig = Signal.Shutdown;
+        version (Test4)
+            sig = Signal.Stop;
+        version (Test5)
+            sig = Signal.HangUp;
 
         client.sendSignal(new FileLogger("logfile.log"), sig);
         return 0;

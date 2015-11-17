@@ -1,4 +1,4 @@
-﻿// This file is written in D programming language
+// This file is written in D programming language
 /**
 *   The example demonstrates basic daemonize features. Described
 *   daemon responds to SIGTERM and SIGHUP signals.
@@ -20,10 +20,9 @@ import std.experimental.logger;
 import daemonize.d;
 
 // First you need to describe your daemon via template
-alias daemon = Daemon!(
-    "DaemonizeExample1", // unique name
-
+alias daemon = Daemon!("DaemonizeExample1", // unique name
     // Setting associative map signal -> callbacks
+    // dfmt off
     KeyValueList!(
         // You can bind same delegate for several signals by Composition template
         // delegate can take additional argument to know which signal is caught
@@ -49,13 +48,16 @@ alias daemon = Daemon!(
 
         return 0;
     }
+    // dfmt on
 );
 
 int main()
 {
     // For windows is important to use absolute path for logging
-    version(Windows) string logFilePath = "C:\\logfile.log";
-    else string logFilePath = "logfile.log";
+    version (Windows)
+        string logFilePath = "C:\\logfile.log";
+    else
+        string logFilePath = "logfile.log";
 
     return buildDaemon!daemon.run(new FileLogger(logFilePath));
 }

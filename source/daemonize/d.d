@@ -13,11 +13,11 @@ public
     import daemonize.keymap;
 }
 
-version(Windows)
+version (Windows)
 {
     public import daemonize.windows;
 }
-else version(linux)
+else version (linux)
 {
     public import daemonize.linux;
 }

@@ -12,9 +12,8 @@
 */
 module daemonize.linux;
 
-version(linux):
-
-static if( __VERSION__ < 2066 ) private enum nogc;
+version (linux)  : static if (__VERSION__ < 2066)
+    private enum nogc;
 
 import std.conv;
 import std.exception;
@@ -48,21 +47,28 @@ string defaultLockFile(string daemonName)
 private Logger savedLogger;
 
 /// Set logger used by daemon and callback
-void setLogger(Logger logger) {
+void setLogger(Logger logger)
+{
     savedLogger = logger;
 }
 
 /// Checks is $(B sig) is actually built-in
 @nogc @safe bool isNativeSignal(Signal sig) pure nothrow
 {
-    switch(sig)
+    switch (sig)
     {
-        case(Signal.Abort):     return true;
-        case(Signal.HangUp):    return true;
-        case(Signal.Interrupt): return true;
-        case(Signal.Quit):      return true;
-        case(Signal.Terminate): return true;
-        default: return false;
+    case (Signal.Abort):
+        return true;
+    case (Signal.HangUp):
+        return true;
+    case (Signal.Interrupt):
+        return true;
+    case (Signal.Quit):
+        return true;
+    case (Signal.Terminate):
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -129,25 +135,23 @@ void setLogger(Logger logger) {
 *   return buildDaemon!daemon.run(logger);
 *   ---------
 */
-template buildDaemon(alias DaemonInfo)
-    if(isDaemon!DaemonInfo || isDaemonClient!DaemonInfo)
+template buildDaemon(alias DaemonInfo) if (isDaemon!DaemonInfo || isDaemonClient!DaemonInfo)
 {
     alias daemon = readDaemonInfo!DaemonInfo;
 
-    static if(isDaemon!DaemonInfo)
+    static if (isDaemon!DaemonInfo)
     {
-        int run(Logger logger
-            , string pidFilePath = "", string lockFilePath = ""
-            , int userId = -1, int groupId = -1)
+        int run(Logger logger, string pidFilePath = "", string lockFilePath = "",
+            int userId = -1, int groupId = -1)
         {
             // Local lock file
-            if(lockFilePath == "")
+            if (lockFilePath == "")
             {
                 lockFilePath = defaultLockFile(DaemonInfo.daemonName);
             }
 
             // Local pid file
-            if(pidFilePath == "")
+            if (pidFilePath == "")
             {
                 pidFilePath = defaultPidFile(DaemonInfo.daemonName);
             }
@@ -158,14 +162,15 @@ template buildDaemon(alias DaemonInfo)
 
             // Handling lockfile if any
             enforceLockFile(lockFilePath, userId);
-            scope(exit) deleteLockFile(lockFilePath);
+            scope (exit)
+                deleteLockFile(lockFilePath);
 
             // Saving process ID and session ID
             pid_t pid, sid;
 
             // For off the parent process
             pid = fork();
-            if(pid < 0)
+            if (pid < 0)
             {
                 savedLogger.error("Failed to start daemon: fork failed");
 
@@ -176,7 +181,7 @@ template buildDaemon(alias DaemonInfo)
             }
 
             // If we got good PID, then we can exit the parent process
-            if(pid > 0)
+            if (pid > 0)
             {
                 // handling pidfile if any
                 writePidFile(pidFilePath, pid, userId);
@@ -192,7 +197,8 @@ template buildDaemon(alias DaemonInfo)
             umask(0);
 
             // Handling of deleting pid file
-            scope(exit) deletePidFile(pidFilePath);
+            scope (exit)
+                deletePidFile(pidFilePath);
 
             // Create a new SID for the child process
             sid = setsid();
@@ -211,7 +217,8 @@ template buildDaemon(alias DaemonInfo)
 
             void bindSignal(int sig, sighandler_t handler)
             {
-                enforce(signal(sig, handler) != SIG_ERR, text("Cannot catch signal ", sig));
+                enforce(signal(sig, handler) != SIG_ERR, text("Cannot catch signal ",
+                    sig));
             }
 
             // Bind native signals
@@ -220,21 +227,24 @@ template buildDaemon(alias DaemonInfo)
             bindSignal(SIGABRT, &signal_handler_daemon);
             bindSignal(SIGTERM, &signal_handler_daemon);
             bindSignal(SIGQUIT, &signal_handler_daemon);
-            bindSignal(SIGINT,  &signal_handler_daemon);
+            bindSignal(SIGINT, &signal_handler_daemon);
             bindSignal(SIGQUIT, &signal_handler_daemon);
             bindSignal(SIGHUP, &signal_handler_daemon);
 
-            assert(daemon.canFitRealtimeSignals, "Cannot fit all custom signals to real-time signals range!");
-            foreach(signame; daemon.customSignals)
+            assert(daemon.canFitRealtimeSignals,
+                "Cannot fit all custom signals to real-time signals range!");
+            foreach (signame; daemon.customSignals)
             {
                 bindSignal(daemon.mapRealTimeSignal(signame), &signal_handler_daemon);
             }
 
             int code = EXIT_FAILURE;
-            try code = DaemonInfo.mainFunc(logger, &shouldExitFunc );
+            try
+                code = DaemonInfo.mainFunc(logger, &shouldExitFunc);
             catch (Throwable th)
             {
-                savedLogger.error("Catched unhandled throwable at daemon level at ", th.file, ": ", th.line, " : ", th.msg);
+                savedLogger.error("Catched unhandled throwable at daemon level at ",
+                    th.file, ": ", th.line, " : ", th.msg);
                 savedLogger.error("Terminating...");
             }
             finally
@@ -268,7 +278,7 @@ template buildDaemon(alias DaemonInfo)
         savedLogger = logger;
 
         // Try to find at default place
-        if(pidFilePath == "")
+        if (pidFilePath == "")
         {
             pidFilePath = defaultPidFile(daemonName);
         }
@@ -276,7 +286,8 @@ template buildDaemon(alias DaemonInfo)
         // Reading file
         int pid = readPidFile(pidFilePath);
 
-        logger.info("Sending signal ", signal, " to daemon ", daemonName, " (pid ", pid, ")");
+        logger.info("Sending signal ", signal, " to daemon ", daemonName, " (pid ",
+            pid, ")");
         kill(pid, daemon.mapSignal(signal));
     }
 
@@ -291,27 +302,36 @@ template buildDaemon(alias DaemonInfo)
     /**
     *   In GNU/Linux daemon doesn't require deinstallation.
     */
-    void uninstall() {}
+    void uninstall()
+    {
+    }
 
     /**
     *   Saves info about exception into daemon $(B logger)
     */
     static class LoggedException : Exception
     {
-        @safe nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+        @safe nothrow this(string msg, string file = __FILE__,
+            size_t line = __LINE__, Throwable next = null)
         {
-            try {
+            try
+            {
                 savedLogger.error(msg);
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
             }
             super(msg, file, line, next);
         }
 
         @safe nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
         {
-            try {
+            try
+            {
                 savedLogger.error(msg);
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
             }
             super(msg, file, line, next);
         }
@@ -330,26 +350,29 @@ template buildDaemon(alias DaemonInfo)
         }
 
         /// Actual signal handler
-        static if(isDaemon!DaemonInfo) extern(C) void signal_handler_daemon(int sig) nothrow
+        static if (isDaemon!DaemonInfo)
+            extern (C) void signal_handler_daemon(int sig) nothrow
         {
-            foreach(signal; DaemonInfo.signalMap.keys)
+            foreach (signal; DaemonInfo.signalMap.keys)
             {
                 alias handler = DaemonInfo.signalMap.get!signal;
 
-                static if(isComposition!signal)
+                static if (isComposition!signal)
                 {
-                    foreach(subsignal; signal.signals)
+                    foreach (subsignal; signal.signals)
                     {
-                        if(daemon.mapSignal(subsignal) == sig)
+                        if (daemon.mapSignal(subsignal) == sig)
                         {
                             try
                             {
-                                static if(__traits(compiles, {handler(savedLogger, subsignal);}))
+                                static if (__traits(compiles, {
+                                    handler(savedLogger, subsignal);
+                                }))
                                     bool res = handler(savedLogger, subsignal);
                                 else
                                     bool res = handler(savedLogger);
 
-                                if(!res)
+                                if (!res)
                                 {
                                     deleteLockFile(savedLockFilePath);
                                     deletePidFile(savedPidFilePath);
@@ -357,29 +380,36 @@ template buildDaemon(alias DaemonInfo)
                                     shouldExit = true;
                                     //terminate(EXIT_SUCCESS);
                                 }
-                                else return;
+                                else
+                                    return;
 
-                            } catch(Throwable th)
+                            }
+                            catch (Throwable th)
                             {
-                                try {
-                                    savedLogger.error("Caught at signal ", subsignal," handler: ", th);
-                                } catch (Exception ex) {
+                                try
+                                {
+                                    savedLogger.error("Caught at signal ",
+                                        subsignal, " handler: ", th);
+                                }
+                                catch (Exception ex)
+                                {
                                 }
                             }
                         }
                     }
-                } else
+                }
+                else
                 {
-                    if(daemon.mapSignal(signal) == sig)
+                    if (daemon.mapSignal(signal) == sig)
                     {
                         try
                         {
-                            static if(__traits(compiles, handler(savedLogger, signal)))
+                            static if (__traits(compiles, handler(savedLogger, signal)))
                                 bool res = handler(savedLogger, signal);
                             else
                                 bool res = handler(savedLogger);
 
-                            if(!res)
+                            if (!res)
                             {
                                 deleteLockFile(savedLockFilePath);
                                 deletePidFile(savedPidFilePath);
@@ -387,18 +417,23 @@ template buildDaemon(alias DaemonInfo)
                                 shouldExit = true;
                                 //terminate(EXIT_SUCCESS);
                             }
-                            else return;
+                            else
+                                return;
                         }
-                        catch(Throwable th)
+                        catch (Throwable th)
                         {
-                            try {
-                                savedLogger.error("Caught at signal ", signal," handler: ", th);
-                            } catch (Exception ex) {
+                            try
+                            {
+                                savedLogger.error("Caught at signal ", signal, " handler: ",
+                                    th);
+                            }
+                            catch (Exception ex)
+                            {
                             }
                         }
                     }
                 }
-             }
+            }
         }
 
         /**
@@ -408,14 +443,16 @@ template buildDaemon(alias DaemonInfo)
         */
         void enforceLockFile(string path, int userid)
         {
-            if(path.exists)
+            if (path.exists)
             {
-                savedLogger.error("There is another daemon instance running: lock file is '",path,"'");
+                savedLogger.error("There is another daemon instance running: lock file is '",
+                    path, "'");
                 savedLogger.info("Remove the file if previous instance if daemon has crashed");
                 terminate(-1);
-            } else
+            }
+            else
             {
-                if(!path.dirName.exists)
+                if (!path.dirName.exists)
                 {
                     mkdirRecurse(path.dirName);
                 }
@@ -427,8 +464,8 @@ template buildDaemon(alias DaemonInfo)
             if (getuid() == 0 && userid >= 0)
             {
                 savedLogger.trace("Changing permissions for lock file: ", path);
-                executeShell(text("chown ", userid," ", path.dirName));
-                executeShell(text("chown ", userid," ", path));
+                executeShell(text("chown ", userid, " ", path.dirName));
+                executeShell(text("chown ", userid, " ", path));
             }
         }
 
@@ -437,13 +474,13 @@ template buildDaemon(alias DaemonInfo)
         */
         void deleteLockFile(string path)
         {
-            if(path.exists)
+            if (path.exists)
             {
                 try
                 {
                     path.remove();
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     savedLogger.warning(text("Failed to remove lock file: ", path));
                     return;
@@ -459,12 +496,13 @@ template buildDaemon(alias DaemonInfo)
         {
             try
             {
-                if(!path.dirName.exists)
+                if (!path.dirName.exists)
                 {
                     mkdirRecurse(path.dirName);
                 }
                 auto file = File(path, "w");
-                scope(exit) file.close();
+                scope (exit)
+                    file.close();
 
                 file.write(pid);
 
@@ -472,10 +510,11 @@ template buildDaemon(alias DaemonInfo)
                 if (getuid() == 0 && userid >= 0)
                 {
                     savedLogger.trace("Changing permissions for pid file: ", path);
-                    executeShell(text("chown ", userid," ", path.dirName));
-                    executeShell(text("chown ", userid," ", path));
+                    executeShell(text("chown ", userid, " ", path.dirName));
+                    executeShell(text("chown ", userid, " ", path));
                 }
-            } catch(Exception e)
+            }
+            catch (Exception e)
             {
                 savedLogger.warning("Failed to write pid file: ", path);
                 return;
@@ -488,7 +527,8 @@ template buildDaemon(alias DaemonInfo)
             try
             {
                 path.remove();
-            } catch(Exception e)
+            }
+            catch (Exception e)
             {
                 savedLogger.warning("Failed to remove pid file: ", path);
                 return;
@@ -502,10 +542,10 @@ template buildDaemon(alias DaemonInfo)
         {
             if (getuid() == 0)
             {
-                if(groupid < 0 || userid < 0)
+                if (groupid < 0 || userid < 0)
                 {
-                    savedLogger.warning("Running as root, but doesn't specified groupid and/or userid for"
-                        " privileges lowing!");
+                    savedLogger.warning(
+                        "Running as root, but doesn't specified groupid and/or userid for" " privileges lowing!");
                     return;
                 }
 
@@ -513,12 +553,14 @@ template buildDaemon(alias DaemonInfo)
                 // process is running as root, drop privileges
                 if (setgid(groupid) != 0)
                 {
-                    savedLogger.error("setgid: Unable to drop group privileges: ", strerror(errno).fromStringz);
+                    savedLogger.error("setgid: Unable to drop group privileges: ",
+                        strerror(errno).fromStringz);
                     assert(false);
                 }
                 if (setuid(userid) != 0)
                 {
-                    savedLogger.error("setuid: Unable to drop user privileges: ", strerror(errno).fromStringz);
+                    savedLogger.error("setuid: Unable to drop user privileges: ",
+                        strerror(errno).fromStringz);
                     assert(false);
                 }
             }
@@ -527,22 +569,31 @@ template buildDaemon(alias DaemonInfo)
         /// Terminating application with cleanup
         void terminate(int code, bool isDaemon = true) nothrow
         {
-            if(isDaemon)
+            if (isDaemon)
             {
-                try {
+                try
+                {
                     savedLogger.info("Daemon is terminating with code: " ~ to!string(code));
-                } catch (Exception ex) {
                 }
-                try {
+                catch (Exception ex)
+                {
+                }
+                try
+                {
                     destroy(savedLogger);
-                } catch (Exception ex) {
+                }
+                catch (Exception ex)
+                {
                 }
 
                 gc_term();
-                try {
+                try
+                {
                     _d_critical_term();
                     _d_monitor_staticdtor();
-                } catch (Exception ex) {
+                }
+                catch (Exception ex)
+                {
                 }
             }
 
@@ -553,7 +604,7 @@ template buildDaemon(alias DaemonInfo)
         int readPidFile(string filename)
         {
             savedLogger.trace(filename);
-            if(!filename.exists)
+            if (!filename.exists)
                 throw new LoggedException("Cannot find pid file at '" ~ filename ~ "'!");
 
             auto file = File(filename, "r");
@@ -561,6 +612,7 @@ template buildDaemon(alias DaemonInfo)
         }
     }
 }
+
 private
 {
     // https://issues.dlang.org/show_bug.cgi?id=13282
@@ -594,33 +646,47 @@ private
     }
 
     /// Handles utilities for signal mapping from local representation to GNU/Linux one
-    template readDaemonInfo(alias DaemonInfo)
-        if(isDaemon!DaemonInfo || isDaemonClient!DaemonInfo)
+    template readDaemonInfo(alias DaemonInfo) if (isDaemon!DaemonInfo || isDaemonClient!DaemonInfo)
     {
         template extractCustomSignals(T...)
         {
-            static if(T.length < 2) alias extractCustomSignals = T[0];
-            else static if(isComposition!(T[1])) alias extractCustomSignals = StrictExpressionList!(T[0].expand, staticFilter!(isCustomSignal, T[1].signals));
-            else static if(isCustomSignal(T[1])) alias extractCustomSignals = StrictExpressionList!(T[0].expand, T[1]);
-            else alias extractCustomSignals = T[0];
+            static if (T.length < 2)
+                alias extractCustomSignals = T[0];
+            else static if (isComposition!(T[1]))
+                alias extractCustomSignals = StrictExpressionList!(T[0].expand,
+                    staticFilter!(isCustomSignal, T[1].signals));
+            else static if (isCustomSignal(T[1]))
+                alias extractCustomSignals = StrictExpressionList!(T[0].expand, T[1]);
+            else
+                alias extractCustomSignals = T[0];
         }
 
         template extractNativeSignals(T...)
         {
-            static if(T.length < 2) alias extractNativeSignals = T[0];
-            else static if(isComposition!(T[1])) alias extractNativeSignals = StrictExpressionList!(T[0].expand, staticFilter!(isNativeSignal, T[1].signals));
-            else static if(isNativeSignal(T[1])) alias extractNativeSignals = StrictExpressionList!(T[0].expand, T[1]);
-            else alias extractNativeSignals = T[0];
+            static if (T.length < 2)
+                alias extractNativeSignals = T[0];
+            else static if (isComposition!(T[1]))
+                alias extractNativeSignals = StrictExpressionList!(T[0].expand,
+                    staticFilter!(isNativeSignal, T[1].signals));
+            else static if (isNativeSignal(T[1]))
+                alias extractNativeSignals = StrictExpressionList!(T[0].expand, T[1]);
+            else
+                alias extractNativeSignals = T[0];
         }
 
-        static if(isDaemon!DaemonInfo)
+        static if (isDaemon!DaemonInfo)
         {
-            alias customSignals = staticFold!(extractCustomSignals, StrictExpressionList!(), DaemonInfo.signalMap.keys).expand; //pragma(msg, [customSignals]);
-            alias nativeSignals = staticFold!(extractNativeSignals, StrictExpressionList!(), DaemonInfo.signalMap.keys).expand; //pragma(msg, [nativeSignals]);
-        } else
+            alias customSignals = staticFold!(extractCustomSignals,
+                StrictExpressionList!(), DaemonInfo.signalMap.keys).expand; //pragma(msg, [customSignals]);
+            alias nativeSignals = staticFold!(extractNativeSignals,
+                StrictExpressionList!(), DaemonInfo.signalMap.keys).expand; //pragma(msg, [nativeSignals]);
+        }
+        else
         {
-            alias customSignals = staticFold!(extractCustomSignals, StrictExpressionList!(), DaemonInfo.signals).expand; //pragma(msg, [customSignals]);
-            alias nativeSignals = staticFold!(extractNativeSignals, StrictExpressionList!(), DaemonInfo.signals).expand; //pragma(msg, [nativeSignals]);
+            alias customSignals = staticFold!(extractCustomSignals,
+                StrictExpressionList!(), DaemonInfo.signals).expand; //pragma(msg, [customSignals]);
+            alias nativeSignals = staticFold!(extractNativeSignals,
+                StrictExpressionList!(), DaemonInfo.signals).expand; //pragma(msg, [nativeSignals]);
         }
 
         /**
@@ -635,14 +701,20 @@ private
         /// Converts platform independent signal to native
         @safe int mapSignal(Signal sig) nothrow
         {
-            switch(sig)
+            switch (sig)
             {
-                case(Signal.Abort):     return SIGABRT;
-                case(Signal.HangUp):    return SIGHUP;
-                case(Signal.Interrupt): return SIGINT;
-                case(Signal.Quit):      return SIGQUIT;
-                case(Signal.Terminate): return SIGTERM;
-                default: return mapRealTimeSignal(sig);
+            case (Signal.Abort):
+                return SIGABRT;
+            case (Signal.HangUp):
+                return SIGHUP;
+            case (Signal.Interrupt):
+                return SIGINT;
+            case (Signal.Quit):
+                return SIGQUIT;
+            case (Signal.Terminate):
+                return SIGTERM;
+            default:
+                return mapRealTimeSignal(sig);
             }
         }
 
@@ -652,10 +724,12 @@ private
             assert(!isNativeSignal(sig));
 
             int counter = 0;
-            foreach(key; customSignals)
+            foreach (key; customSignals)
             {
-                if(sig == key) return counter + __libc_current_sigrtmin;
-                else counter++;
+                if (sig == key)
+                    return counter + __libc_current_sigrtmin;
+                else
+                    counter++;
             }
 
             assert(false, "Parameter signal not in daemon description!");

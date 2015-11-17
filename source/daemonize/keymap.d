@@ -65,7 +65,7 @@ template staticMap2(alias F, T...)
     }
     else
     {
-        alias staticMap2 = ExpressionList!(F!(T[0], T[1]), staticMap2!(F, T[2  .. $]));
+        alias staticMap2 = ExpressionList!(F!(T[0], T[1]), staticMap2!(F, T[2 .. $]));
     }
 }
 /// Example
@@ -85,16 +85,18 @@ unittest
 */
 template staticFilter(alias F, T...)
 {
-    static if(T.length == 0)
+    static if (T.length == 0)
     {
         alias staticFilter = ExpressionList!();
     }
     else
     {
-        static if(__traits(compiles, F(T[0]))) enum result = F(T[0]);
-        else enum result = F!(T[0]);
+        static if (__traits(compiles, F(T[0])))
+            enum result = F(T[0]);
+        else
+            enum result = F!(T[0]);
 
-        static if(result)
+        static if (result)
         {
             alias staticFilter = ExpressionList!(T[0], staticFilter!(F, T[1 .. $]));
         }
@@ -114,7 +116,8 @@ unittest
         return val <= 15;
     }
 
-    static assert(staticFilter!(testFunc, ExpressionList!(42, 108, 15, 2)) == ExpressionList!(15, 2));
+    static assert(staticFilter!(testFunc, ExpressionList!(42, 108, 15,
+        2)) == ExpressionList!(15, 2));
 }
 
 /**
@@ -131,7 +134,7 @@ template staticFilter2(alias F, T...)
     }
     else
     {
-        static if(F(T[0], T[1]))
+        static if (F(T[0], T[1]))
         {
             alias staticFilter2 = ExpressionList!(T[0], T[1], staticFilter2!(F, T[2 .. $]));
         }
@@ -151,7 +154,8 @@ unittest
         return val1.to!int == val2;
     }
 
-    static assert(staticFilter2!(testFunc, ExpressionList!("42", 42, "2", 108, "15", 15, "1", 2)) == ExpressionList!("42", 42, "15", 15));
+    static assert(staticFilter2!(testFunc, ExpressionList!("42", 42, "2",
+        108, "15", 15, "1", 2)) == ExpressionList!("42", 42, "15", 15));
 }
 
 /**
@@ -162,14 +166,14 @@ unittest
 */
 template staticFold(alias F, T...)
 {
-    static if(T.length == 0) // invalid input
+    static if (T.length == 0) // invalid input
     {
         alias staticFold = ExpressionList!();
     }
-    else static if(T.length == 1)
+    else static if (T.length == 1)
     {
-        static if(is(T[0]) || !__traits(compiles, {enum staticFold = T[0];}))
-            alias staticFold = T[0];
+        static if (is(T[0]) || !__traits(compiles, { enum staticFold = T[0]; }))
+                alias staticFold = T[0];
         else
             enum staticFold = T[0];
     }
@@ -190,7 +194,7 @@ unittest
 
     template preferString(T...)
     {
-        static if(is(T[0] == string))
+        static if (is(T[0] == string))
             alias preferString = T[0];
         else
             alias preferString = T[1];
@@ -223,16 +227,16 @@ template staticRobin(SF...)
     {
         private template takeByIndex(alias T)
         {
-            static if(is(T.expand[i]))
+            static if (is(T.expand[i]))
                 alias takeByIndex = T.expand[i];
             else
             {
                 // hack to avoid compile-time lambdas
                 // see http://forum.dlang.org/thread/lkl0lp$204h$1@digitalmars.com
-                static if(__traits(compiles, {enum takeByIndex = T.expand[i];}))
-                {
-                    enum takeByIndex = T.expand[i];
-                }
+                static if (__traits(compiles, { enum takeByIndex = T.expand[i]; }))
+                    {
+                        enum takeByIndex = T.expand[i];
+                    }
                 else
                 {
                     alias takeByIndex = T.expand[i];
@@ -240,13 +244,13 @@ template staticRobin(SF...)
             }
         }
 
-        static if(i >= minLength)
+        static if (i >= minLength)
         {
             alias robin = ExpressionList!();
         }
         else
         {
-            alias robin = ExpressionList!(staticMap!(takeByIndex, SF), robin!(i+1));
+            alias robin = ExpressionList!(staticMap!(takeByIndex, SF), robin!(i + 1));
         }
     }
 
@@ -255,11 +259,13 @@ template staticRobin(SF...)
 /// Example
 unittest
 {
-    alias test = staticRobin!(StrictExpressionList!(int, int, int), StrictExpressionList!(float, float));
+    alias test = staticRobin!(StrictExpressionList!(int, int, int),
+        StrictExpressionList!(float, float));
     static assert(is(test == ExpressionList!(int, float, int, float)));
 
-    alias test2 = staticRobin!(StrictExpressionList!(1, 2), StrictExpressionList!(3, 4, 5), StrictExpressionList!(6, 7));
-    static assert([test2]== [1, 3, 6, 2, 4, 7]);
+    alias test2 = staticRobin!(StrictExpressionList!(1, 2),
+        StrictExpressionList!(3, 4, 5), StrictExpressionList!(6, 7));
+    static assert([test2] == [1, 3, 6, 2, 4, 7]);
 }
 
 /**
@@ -269,7 +275,8 @@ unittest
 */
 template KeyValueList(Pairs...)
 {
-    static assert(Pairs.length % 2 == 0, text("KeyValueList is expecting even count of elements, not ", Pairs.length));
+    static assert(Pairs.length % 2 == 0,
+        text("KeyValueList is expecting even count of elements, not ", Pairs.length));
 
     /// Number of entries in the map
     enum length = Pairs.length / 2;
@@ -281,51 +288,76 @@ template KeyValueList(Pairs...)
     template get(Keys...)
     {
         static assert(Keys.length > 0, "KeyValueList.get is expecting an argument!");
-        static if(Keys.length == 1)
+        static if (Keys.length == 1)
         {
-            static if(is(Keys[0]) || !__traits(compiles, { enum Key = Keys[0]; }) ) {
-                alias Key = Keys[0];
-            } else {
+            static if (is(Keys[0]) || !__traits(compiles, { enum Key = Keys[0]; }))
+                {
+                    alias Key = Keys[0];
+                }
+            else
+            {
                 enum Key = Keys[0];
-                static assert(__traits(compiles, Key == Key), text(typeof(Key).stringof, " must have a opEqual!"));
+                static assert(__traits(compiles, Key == Key),
+                    text(typeof(Key).stringof, " must have a opEqual!"));
             }
 
             private static template innerFind(T...)
             {
-                static if(T.length == 0) {
-                    alias innerFind = ExpressionList!();
-                } else
+                static if (T.length == 0)
                 {
-                    static if(is(Keys[0])) {
-                        static if(is(T[0] == Key)) {
-                            static if(is(T[1])) {
+                    alias innerFind = ExpressionList!();
+                }
+                else
+                {
+                    static if (is(Keys[0]))
+                    {
+                        static if (is(T[0] == Key))
+                        {
+                            static if (is(T[1]))
+                            {
                                 alias innerFind = T[1];
-                            } else {
+                            }
+                            else
+                            {
                                 enum innerFind = T[1];
                             }
-                        } else {
+                        }
+                        else
+                        {
                             alias innerFind = innerFind!(T[2 .. $]);
                         }
-                    } else
+                    }
+                    else
                     {
-                        static if(__traits(compiles, T[0].opEqual!(Key))) enum cmpRes = T[0].opEqual!(Key);
-                        else enum cmpRes = T[0] == Key;
+                        static if (__traits(compiles, T[0].opEqual!(Key)))
+                            enum cmpRes = T[0].opEqual!(Key);
+                        else
+                            enum cmpRes = T[0] == Key;
 
-                        static if(cmpRes) {
-                            static if(is(T[1])) {
+                        static if (cmpRes)
+                        {
+                            static if (is(T[1]))
+                            {
                                 alias innerFind = T[1];
-                            } else {
+                            }
+                            else
+                            {
                                 // hack to avoid compile-time lambdas
                                 // see http://forum.dlang.org/thread/lkl0lp$204h$1@digitalmars.com
-                                static if(__traits(compiles, {enum innerFind = T[1];}))
+                                static if (__traits(compiles, {
+                                    enum innerFind = T[1];
+                                }))
                                 {
                                     enum innerFind = T[1];
-                                } else
+                                }
+                                else
                                 {
                                     alias innerFind = T[1];
                                 }
                             }
-                        } else {
+                        }
+                        else
+                        {
                             alias innerFind = innerFind!(T[2 .. $]);
                         }
                     }
@@ -333,8 +365,10 @@ template KeyValueList(Pairs...)
             }
 
             alias get = innerFind!Pairs;
-        } else {
-            alias get = ExpressionList!(get!(Keys[0 .. $/2]), get!(Keys[$/2 .. $]));
+        }
+        else
+        {
+            alias get = ExpressionList!(get!(Keys[0 .. $ / 2]), get!(Keys[$ / 2 .. $]));
         }
     }
 
@@ -349,40 +383,58 @@ template KeyValueList(Pairs...)
     template set(KeyValues...)
     {
         static assert(KeyValues.length >= 2, "KeyValueList.set is expecting at least one pair!");
-        static assert(KeyValues.length % 2 == 0, "KeyValuesExpressionList.set is expecting even count of arguments!");
+        static assert(KeyValues.length % 2 == 0,
+            "KeyValuesExpressionList.set is expecting even count of arguments!");
 
         template inner(KeyValues...)
         {
-            static if(KeyValues.length == 2) {
-                static if(is(KeyValues[0])) {
+            static if (KeyValues.length == 2)
+            {
+                static if (is(KeyValues[0]))
+                {
                     alias Key = KeyValues[0];
-                } else {
+                }
+                else
+                {
                     enum Key = KeyValues[0];
                 }
 
-                static if(is(KeyValues[1])) {
+                static if (is(KeyValues[1]))
+                {
                     alias Value = KeyValues[1];
-                } else {
+                }
+                else
+                {
                     enum Value = KeyValues[1];
                 }
 
                 private template innerFind(T...)
                 {
-                    static if(T.length == 0) {
-                        alias innerFind = ExpressionList!(Key, Value);
-                    } else
+                    static if (T.length == 0)
                     {
-                        static if(is(Key)) {
-                            static if(is(T[0] == Key)) {
+                        alias innerFind = ExpressionList!(Key, Value);
+                    }
+                    else
+                    {
+                        static if (is(Key))
+                        {
+                            static if (is(T[0] == Key))
+                            {
                                 alias innerFind = ExpressionList!(Key, Value, T[2 .. $]);
-                            } else {
+                            }
+                            else
+                            {
                                 alias innerFind = ExpressionList!(T[0 .. 2], innerFind!(T[2 .. $]));
                             }
-                        } else
+                        }
+                        else
                         {
-                            static if(T[0] == Key) {
+                            static if (T[0] == Key)
+                            {
                                 alias innerFind = ExpressionList!(Key, Value, T[2 .. $]);
-                            } else {
+                            }
+                            else
+                            {
                                 alias innerFind = ExpressionList!(T[0 .. 2], innerFind!(T[2 .. $]));
                             }
                         }
@@ -390,10 +442,14 @@ template KeyValueList(Pairs...)
                 }
 
                 alias inner = innerFind!Pairs;
-            } else {
-                alias inner = ExpressionList!(inner!(KeyValues[0 .. $/2]), inner!(KeyValues[$/2 .. $]));
+            }
+            else
+            {
+                alias inner = ExpressionList!(inner!(KeyValues[0 .. $ / 2]),
+                    inner!(KeyValues[$ / 2 .. $]));
             }
         }
+
         alias set = KeyValueList!(inner!KeyValues);
     }
 
@@ -405,9 +461,12 @@ template KeyValueList(Pairs...)
 
     private static template getKeys(T...)
     {
-        static if(T.length == 0) {
+        static if (T.length == 0)
+        {
             alias getKeys = ExpressionList!();
-        } else {
+        }
+        else
+        {
             alias getKeys = ExpressionList!(T[0], getKeys!(T[2 .. $]));
         }
     }
@@ -416,9 +475,12 @@ template KeyValueList(Pairs...)
 
     private static template getValues(T...)
     {
-        static if(T.length == 0) {
+        static if (T.length == 0)
+        {
             alias getValues = ExpressionList!();
-        } else {
+        }
+        else
+        {
             alias getValues = ExpressionList!(T[1], getValues!(T[2 .. $]));
         }
     }
@@ -442,7 +504,8 @@ template KeyValueList(Pairs...)
     {
         private alias newKeys = staticFilter!(F, keys);
         private alias newValues = staticMap!(get, newKeys);
-        alias filterByKey = KeyValueList!(staticRobin!(StrictExpressionList!newKeys, StrictExpressionList!newValues));
+        alias filterByKey = KeyValueList!(staticRobin!(StrictExpressionList!newKeys,
+            StrictExpressionList!newValues));
     }
 }
 ///
@@ -472,7 +535,7 @@ unittest
 
     template inc(string key, int val)
     {
-        alias inc = ExpressionList!(key, val+1);
+        alias inc = ExpressionList!(key, val + 1);
     }
 
     alias map6 = map.map!inc;

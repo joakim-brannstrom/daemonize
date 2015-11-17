@@ -20,12 +20,12 @@ enum DoSomethingSignal = "DoSomething".customSignal;
 
 shared string logFilePath;
 
-version(DaemonServer)
+version (DaemonServer)
 {
     // Full description for daemon side
-    alias daemon = Daemon!(
-        "DaemonizeExample2",
+    alias daemon = Daemon!("DaemonizeExample2",
 
+        // dfmt off
         KeyValueList!(
             Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger)
             {
@@ -64,20 +64,23 @@ version(DaemonServer)
 
             return 0;
         }
+        // dfmt on
     );
 
     int main()
     {
         // For windows is important to use absolute path for logging
-        version(Windows) string logFilePath = "C:\\logfile.log";
-        else string logFilePath = "logfile.log";
+        version (Windows)
+            string logFilePath = "C:\\logfile.log";
+        else
+            string logFilePath = "logfile.log";
         .logFilePath = logFilePath;
 
         auto logger = new FileLogger(logFilePath);
         return buildDaemon!daemon.run(logger);
     }
 }
-version(DaemonClient)
+version (DaemonClient)
 {
     import core.thread;
     import core.time;
@@ -85,13 +88,9 @@ version(DaemonClient)
     // For client you don't need full description of the daemon
     // the truncated description consists only of name and a list of
     // supported signals
-    alias client = DaemonClient!(
-        "DaemonizeExample2",
+    alias client = DaemonClient!("DaemonizeExample2",
         Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop),
-        Signal.HangUp,
-        RotateLogSignal,
-        DoSomethingSignal
-    );
+        Signal.HangUp, RotateLogSignal, DoSomethingSignal);
 
     void main()
     {
@@ -110,7 +109,7 @@ version(DaemonClient)
         send(logger, Signal.Terminate);
 
         // For windows services are remain in SC manager until uninstalled manually
-        version(Windows)
+        version (Windows)
         {
             Thread.sleep(500.dur!"msecs");
             uninstall(logger);
