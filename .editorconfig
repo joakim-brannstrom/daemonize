@@ -1,0 +1,8 @@
+[*.d]
+indent_style=space
+indent_size=4
+tab_width=4
+end_of_line=lf
+soft_max_line_length=70
+
+dfmt_brace_style=allman
