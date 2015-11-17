@@ -51,9 +51,8 @@ version(DaemonServer)
         (logger, shouldExit) 
         {
             // will stop the daemon in 5 minutes
-            auto time = Clock.currSystemTick + cast(TickDuration)5.dur!"minutes";
-            while(!shouldExit() && time > Clock.currSystemTick) {  }
-            logger.logInfo("Exiting main function!");
+            auto time = MonoTime.currTime + 5.dur!"minutes";
+            while(!shouldExit() && time > MonoTime.currTime) {  }
             
             return 0;
         }

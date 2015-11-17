@@ -42,8 +42,8 @@ alias daemon = Daemon!(
     // Main function where your code is
     (logger, shouldExit) {
         // will stop the daemon in 5 minutes
-        auto time = Clock.currSystemTick + cast(TickDuration)5.dur!"minutes";
-        while(!shouldExit() && time > Clock.currSystemTick) {  }
+        auto time = MonoTime.currTime + 5.dur!"minutes";
+        while(!shouldExit() && time > MonoTime.currTime) {  }
         
         logger.logInfo("Exiting main function!");
         
