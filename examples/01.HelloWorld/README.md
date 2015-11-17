@@ -7,10 +7,10 @@ Explanation
 ===========
 
 The first thing you should do is to import `daemonize.d` package that exporting all inner modules
-taking in account current OS. Also daemonize package depends on `dlogg` package for easy handling
+taking in account current OS. Also daemonize package depends on `std.experimental.logger` package for easy handling
 of concurrent and lazy logging:
 ```D
-import dlogg.strict;
+import std.experimental.logger;
 import daemonize.d;
 ```
 
@@ -40,12 +40,12 @@ Also the daemon logger is passed into each signal handler:
         // delegate can take additional argument to know which signal is caught
         Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger, signal)
         {
-            logger.logInfo("Exiting...");
+            logger.info("Exiting...");
             return false; // returning false will terminate daemon
         },
         Signal.HangUp, (logger)
         {
-            logger.logInfo("Hello World!");
+            logger.info("Hello World!");
             return true; // continue execution
         }
     )
@@ -60,12 +60,12 @@ Main function of the daemon goes further:
         bool timeout = false;
         while(!shouldExit() && time > Clock.currSystemTick) {  }
         
-        logger.logInfo("Exiting main function!");
+        logger.info("Exiting main function!");
         
         return 0;
     }
 ```
-`shouldExit` should be `int function(shared ILogger, bool function())` type and is used to stop main function from
+`shouldExit` should be `int function(Logger, bool function())` type and is used to stop main function from
 signal callbacks. As soon as main delegate returns, the daemon terminates. At the example the daemon will auto-stop after 5 minutes.
 
 
@@ -77,7 +77,7 @@ int main()
     version(Windows) string logFilePath = "C:\\logfile.log";
     else string logFilePath = "logfile.log";
     
-    auto logger = new shared StrictLogger(logFilePath);
+    auto logger = new FileLogger(logFilePath);
 ```
 
 And then:

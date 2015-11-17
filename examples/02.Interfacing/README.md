@@ -41,23 +41,28 @@ Daemon description is similar to [Example 01](https://github.com/NCrashed/daemon
         KeyValueList!(
             Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger)
             {
-                logger.logInfo("Exiting...");
+                logger.info("Exiting...");
                 return false;
             },
             Signal.HangUp, (logger)
             {
-                logger.logInfo("Hello World!");
+                logger.info("Hello World!");
                 return true;
             },
             RotateLogSignal, (logger)
             {
-                logger.logInfo("Rotating log!");
-                logger.reload;
+                logger.info("Rotating log!");
+                destroy(stdThreadLocalLog);
+
+                import std.file;
+                rename(logFilePath, logFilePath ~ ".old");
+                stdThreadLocalLog = new FileLogger(.logFilePath);
+
                 return true;
             },
             DoSomethingSignal, (logger)
             {
-                logger.logInfo("Doing something...");
+                logger.info("Doing something...");
                 return true;
             }
         ),
@@ -65,11 +70,10 @@ Daemon description is similar to [Example 01](https://github.com/NCrashed/daemon
         (logger, shouldExit) 
         {
             // will stop the daemon in 5 minutes
-            auto time = Clock.currSystemTick + cast(TickDuration)5.dur!"minutes";
-            bool timeout = false;
-            while(!shouldExit() && time > Clock.currSystemTick) {  }
+            auto time = MonoTime.currTime + 5.dur!"minutes";
+            while(!shouldExit() && time > MonoTime.currTime) {  }
             
-            logger.logInfo("Exiting main function!");
+            logger.info("Exiting main function!");
             
             return 0;
         }
@@ -81,7 +85,7 @@ Daemon description is similar to [Example 01](https://github.com/NCrashed/daemon
         version(Windows) string logFilePath = "C:\\logfile.log";
         else string logFilePath = "logfile.log";
         
-        auto logger = new shared StrictLogger(logFilePath);
+        auto logger = new FileLogger(logFilePath);
         return buildDaemon!daemon.run(logger); 
     }
 ```
