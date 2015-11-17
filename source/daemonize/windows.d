@@ -20,11 +20,11 @@ import std.typetuple;
 import std.utf;
 import std.c.stdlib;
 import std.typecons;
+import std.experimental.logger;
 
 import daemonize.daemon;
 import daemonize.string;
 import daemonize.keymap;
-import dlogg.log;
 
 /// Windows version doesn't use pid files
 string defaultPidFile(string daemonName)
@@ -108,12 +108,12 @@ template buildDaemon(alias DaemonInfo)
         *       KeyValueList!(
         *           Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger, signal)
         *           {
-        *               logger.logInfo("Exiting...");
+        *               logger.info("Exiting...");
         *               return false; // returning false will terminate daemon
         *           },
         *           Signal.HangUp, (logger)
         *           {
-        *               logger.logInfo("Hello World!");
+        *               logger.info("Hello World!");
         *               return true; // continue execution
         *           }
         *       ),
@@ -125,17 +125,17 @@ template buildDaemon(alias DaemonInfo)
         *           bool timeout = false;
         *           while(!shouldExit() && time > Clock.currSystemTick) {  }
         *           
-        *           logger.logInfo("Exiting main function!");
+        *           logger.info("Exiting main function!");
         *           
         *           return 0;
         *       }
         *   );
         *   
         *   //...
-        *   buildDaemon!daemon.run(new shared StrictLogger(logFilePath)); 
+        *   buildDaemon!daemon.run(new FileLogger(logFilePath)); 
         *    ----------
         */
-        int run(shared ILogger logger
+        int run(Logger logger
             , string pidFilePath = "", string lockFilePath = ""
             , int userId = -1, int groupId = -1)
         { 
@@ -144,7 +144,7 @@ template buildDaemon(alias DaemonInfo)
             auto maybeStatus = queryServiceStatus();
             if(maybeStatus.isNull)
             {
-                savedLogger.logInfo("No service is installed!");
+                savedLogger.info("No service is installed!");
                 serviceInstall();
                 serviceStart();
                 return EXIT_SUCCESS;
@@ -157,12 +157,12 @@ template buildDaemon(alias DaemonInfo)
                     auto state = maybeStatus.get.dwCurrentState;
                     if(state == SERVICE_STOPPED)
                     {
-                        savedLogger.logInfo("Starting installed service!");
+                        savedLogger.info("Starting installed service!");
                         serviceStart();
                     }
                 } else if(initResult == initResult.OtherError)
                 {
-                    savedLogger.logError("Service is already running!");
+                    savedLogger.error("Service is already running!");
                     return EXIT_FAILURE;
                 }
                 
@@ -176,7 +176,7 @@ template buildDaemon(alias DaemonInfo)
     *
     *   Note: Can be used with $(B DaemonClient) template, actually you can ommit signal list for the template.
     */
-    void uninstall(shared ILogger logger)
+    void uninstall(Logger logger)
     {
         savedLogger = logger;
         
@@ -187,7 +187,7 @@ template buildDaemon(alias DaemonInfo)
         }
         else
         {
-            savedLogger.logWarning("Cannot find service in SC manager! No uninstallation action is performed.");
+            savedLogger.warning("Cannot find service in SC manager! No uninstallation action is performed.");
         }
     }
     
@@ -200,7 +200,7 @@ template buildDaemon(alias DaemonInfo)
     *
     *   Note: Can be used with $(B DaemonClient) template.
     */
-    void sendSignal(shared ILogger logger, Signal sig, string pidFilePath = "")
+    void sendSignal(Logger logger, Signal sig, string pidFilePath = "")
     {
         savedLogger = logger;
         
@@ -213,11 +213,11 @@ template buildDaemon(alias DaemonInfo)
         if(!ControlService(service, daemon.mapSignal(sig), &serviceStatus))
             throw new LoggedException(text("Failed to send signal to service ", DaemonInfo.daemonName, ". Details: ", getLastErrorDescr));
             
-        logger.logInfo(text("Sending signal ", sig, " to daemon ", DaemonInfo.daemonName));
+        logger.info(text("Sending signal ", sig, " to daemon ", DaemonInfo.daemonName));
     }
     
     /// ditto with dynamic service name
-    void sendSignalDynamic(shared ILogger logger, string serviceName, Signal sig, string pidFilePath = "")
+    void sendSignalDynamic(Logger logger, string serviceName, Signal sig, string pidFilePath = "")
     {
         savedLogger = logger;
         
@@ -231,7 +231,7 @@ template buildDaemon(alias DaemonInfo)
         if(!ControlService(service, daemon.mapSignal(sig), &serviceStatus))
             throw new LoggedException(text("Failed to send signal to service ", serviceName, ". Details: ", getLastErrorDescr));
             
-        logger.logInfo(text("Sending signal ", sig, " to daemon ", serviceName));
+        logger.info(text("Sending signal ", sig, " to daemon ", serviceName));
     }
     
     /**
@@ -241,13 +241,13 @@ template buildDaemon(alias DaemonInfo)
     {
         @safe nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
         {
-            savedLogger.logError(msg);
+            savedLogger.error(msg);
             super(msg, file, line, next);
         }
     
         @safe nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
         {
-            savedLogger.logError(msg);
+            savedLogger.error(msg);
             super(msg, file, line, next);
         }
     }
@@ -256,7 +256,7 @@ template buildDaemon(alias DaemonInfo)
     {
         __gshared SERVICE_STATUS serviceStatus;
         __gshared SERVICE_STATUS_HANDLE serviceStatusHandle;
-        shared ILogger savedLogger;
+        Logger savedLogger;
         
         bool shouldExit()
         {
@@ -280,25 +280,24 @@ template buildDaemon(alias DaemonInfo)
     
                     serviceStatus.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
                     
-                    savedLogger.reload;
-                    savedLogger.minOutputLevel = LoggingLevel.Muted;
-                    savedLogger.logInfo("Registering control handler");
+                    stdThreadLocalLog = savedLogger;
+                    savedLogger.info("Registering control handler");
                     
                     serviceStatusHandle = RegisterServiceCtrlHandlerW(cast(LPWSTR)DaemonInfo.daemonName.toUTF16z, &controlHandler);
                     if(serviceStatusHandle is null)
                     {
-                        savedLogger.logError("Failed to register control handler!");
-                        savedLogger.logError(getLastErrorDescr);
+                        savedLogger.error("Failed to register control handler!");
+                        savedLogger.error(getLastErrorDescr);
                         return;
                     }
                     
-                    savedLogger.logInfo("Running user main delegate");
+                    savedLogger.info("Running user main delegate");
                     reportServiceStatus(SERVICE_RUNNING, NO_ERROR, 0.dur!"msecs");
                     try code = DaemonInfo.mainFunc(savedLogger, &shouldExit);
                     catch (Throwable ex) 
                     {
-                        savedLogger.logError(text("Catched unhandled throwable at daemon level at ", ex.file, ":", ex.line, ": ", ex.msg));
-                        savedLogger.logError("Terminating...");
+                        savedLogger.error(text("Catched unhandled throwable at daemon level at ", ex.file, ":", ex.line, ": ", ex.msg));
+                        savedLogger.error("Terminating...");
                         reportServiceStatus(SERVICE_STOPPED, EXIT_FAILURE, 0.dur!"msecs");
                         return;
                     }
@@ -306,8 +305,8 @@ template buildDaemon(alias DaemonInfo)
                 }
                 catch(Throwable th)
                 {
-                    savedLogger.logError(text("Internal daemon error, please bug report: ", th.file, ":", th.line, ": ", th.msg));
-                    savedLogger.logError("Terminating...");
+                    savedLogger.error(text("Internal daemon error, please bug report: ", th.file, ":", th.line, ": ", th.msg));
+                    savedLogger.error("Terminating...");
                 }
             }
             
@@ -325,7 +324,7 @@ template buildDaemon(alias DaemonInfo)
                             {
                                 case(daemon.mapSignal(subsignal)):
                                 {
-                                    savedLogger.logInfo(text("Caught signal ", subsignal));
+                                    savedLogger.info(text("Caught signal ", subsignal));
                                     bool res = true;
                                     try 
                                     {
@@ -338,7 +337,7 @@ template buildDaemon(alias DaemonInfo)
                                     }
                                     catch(Throwable th)
                                     {
-                                        savedLogger.logError(text("Caught a throwable at signal ", subsignal, " handler: ", th));
+                                        savedLogger.error(text("Caught a throwable at signal ", subsignal, " handler: ", th));
                                     }
                                     return;
                                 }
@@ -348,7 +347,7 @@ template buildDaemon(alias DaemonInfo)
                         {
                             case(daemon.mapSignal(signal)):
                             {
-                                savedLogger.logInfo(text("Caught signal ", signal));
+                                savedLogger.info(text("Caught signal ", signal));
                                 bool res = true;
                                 try 
                                 {
@@ -361,7 +360,7 @@ template buildDaemon(alias DaemonInfo)
                                 }
                                 catch(Throwable th)
                                 {
-                                    savedLogger.logError(text("Caught a throwable at signal ", signal, " handler: ", th));
+                                    savedLogger.error(text("Caught a throwable at signal ", signal, " handler: ", th));
                                 }
                                 return;
                             }
@@ -369,7 +368,7 @@ template buildDaemon(alias DaemonInfo)
                     }
                     default:
                     {
-                        savedLogger.logWarning(text("Caught signal ", fdwControl, ". But don't have any handler binded!"));
+                        savedLogger.warning(text("Caught signal ", fdwControl, ". But don't have any handler binded!"));
                     }
                 }
             }
@@ -393,8 +392,8 @@ template buildDaemon(alias DaemonInfo)
             {
                 if(!supressLogging)
                 {
-                    savedLogger.logError("Failed to open service!");
-                    savedLogger.logError(getLastErrorDescr);
+                    savedLogger.error("Failed to open service!");
+                    savedLogger.error(getLastErrorDescr);
                 }
                 throw new Exception(text("Failed to open service! ", getLastErrorDescr));
             }
@@ -436,8 +435,8 @@ template buildDaemon(alias DaemonInfo)
                     }
                     else
                     {
-                        savedLogger.logError("Failed to start service dispatcher!");
-                        savedLogger.logError(getLastErrorDescr);
+                        savedLogger.error("Failed to start service dispatcher!");
+                        savedLogger.error(getLastErrorDescr);
                         return ServiceInitState.OtherError;
                     }
                 }
@@ -476,7 +475,7 @@ template buildDaemon(alias DaemonInfo)
             if(service is null)
                 throw new LoggedException("Failed to create service! " ~ getLastErrorDescr); 
             
-            savedLogger.logInfo("Service installed successfully!");
+            savedLogger.info("Service installed successfully!");
         }
         
         /// Removing service from SC manager
@@ -489,7 +488,7 @@ template buildDaemon(alias DaemonInfo)
             scope(exit) CloseServiceHandle(service);
             
             DeleteService(service);
-            savedLogger.logInfo("Service is removed successfully!");
+            savedLogger.info("Service is removed successfully!");
         }
         
         /// Tries to start service and checks the running state
@@ -537,7 +536,7 @@ template buildDaemon(alias DaemonInfo)
                 }
             }
             
-            savedLogger.logInfo("Service is started successfully!");
+            savedLogger.info("Service is started successfully!");
         }
         
         /**
