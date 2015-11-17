@@ -2,7 +2,7 @@
 /**
 *   The example demonstrates how to run vibe.d server
 *   in daemon mode.
-*   
+*
 *   If SIGTERM is received, daemon terminates. If SIGHUP is received,
 *   daemon prints "Hello World!" message to logg.
 *
@@ -23,16 +23,16 @@ import vibe.http.server;
 // Simple daemon description
 alias daemon = Daemon!(
     "DaemonizeExample3", // unique name
-    
+
     KeyValueList!(
         Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger)
         {
             logger.info("Exiting...");
-            
+
             // No need to force exit here
-            // main will stop after the call 
+            // main will stop after the call
             exitEventLoop(true);
-            return true; 
+            return true;
         },
         Signal.HangUp, (logger)
         {
@@ -40,7 +40,7 @@ alias daemon = Daemon!(
             return true;
         }
     ),
-    
+
     (logger, shouldExit) {
         // Default vibe initialization
         auto settings = new HTTPServerSettings;
@@ -63,7 +63,7 @@ void handleRequest(HTTPServerRequest req,
 
 int main()
 {
-    // Setting vibe logger 
+    // Setting vibe logger
     // daemon closes stdout/stderr and vibe logger will crash
     // if not suppress printing to console
     version(Windows) enum vibeLogName = "C:\\vibe.log";
@@ -77,7 +77,7 @@ int main()
 
     version(Windows) enum logFileName = "C:\\logfile.log";
     else enum logFileName = "logfile.log";
-	
+
     auto logger = new FileLogger(logFileName);
-    return buildDaemon!daemon.run(logger); 
+    return buildDaemon!daemon.run(logger);
 }

@@ -25,7 +25,7 @@ version(DaemonServer)
     // Full description for daemon side
     alias daemon = Daemon!(
         "DaemonizeExample2",
-        
+
         KeyValueList!(
             Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger)
             {
@@ -54,34 +54,34 @@ version(DaemonServer)
                 return true;
             }
         ),
-        
-        (logger, shouldExit) 
+
+        (logger, shouldExit)
         {
             // will stop the daemon in 5 minutes
             auto time = MonoTime.currTime + 5.dur!"minutes";
             while(!shouldExit() && time > MonoTime.currTime) {  }
             logger.info("Exiting main function!");
-            
+
             return 0;
         }
     );
-    
+
     int main()
     {
         // For windows is important to use absolute path for logging
         version(Windows) string logFilePath = "C:\\logfile.log";
         else string logFilePath = "logfile.log";
         .logFilePath = logFilePath;
-		
+
         auto logger = new FileLogger(logFilePath);
-        return buildDaemon!daemon.run(logger); 
+        return buildDaemon!daemon.run(logger);
     }
 }
 version(DaemonClient)
 {
     import core.thread;
     import core.time;
-    
+
     // For client you don't need full description of the daemon
     // the truncated description consists only of name and a list of
     // supported signals
@@ -92,28 +92,28 @@ version(DaemonClient)
         RotateLogSignal,
         DoSomethingSignal
     );
-    
+
     void main()
     {
-    	auto logger = new FileLogger("client.log");
-    	
-    	alias daemon = buildDaemon!client;
-    	alias send = daemon.sendSignal;
-    	alias uninstall = daemon.uninstall;
-    	
-        send(logger, Signal.HangUp); 
+        auto logger = new FileLogger("client.log");
+
+        alias daemon = buildDaemon!client;
+        alias send = daemon.sendSignal;
+        alias uninstall = daemon.uninstall;
+
+        send(logger, Signal.HangUp);
         Thread.sleep(50.dur!"msecs");
-        send(logger, RotateLogSignal); 
+        send(logger, RotateLogSignal);
         Thread.sleep(50.dur!"msecs");
-        send(logger, DoSomethingSignal);         
+        send(logger, DoSomethingSignal);
         Thread.sleep(50.dur!"msecs");
         send(logger, Signal.Terminate);
-        
+
         // For windows services are remain in SC manager until uninstalled manually
         version(Windows)
         {
-        	Thread.sleep(500.dur!"msecs");
-        	uninstall(logger);
-    	}
+            Thread.sleep(500.dur!"msecs");
+            uninstall(logger);
+        }
     }
 }

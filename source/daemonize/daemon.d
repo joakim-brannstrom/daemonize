@@ -27,7 +27,7 @@ static if( __VERSION__ < 2066 ) private enum nogc;
 *   You can define your own signals by $(B customSignal) function.
 *   These signals are mapped to realtime signals in linux.
 *
-*   Note: Signal enum is based on string to map signals on winapi events. 
+*   Note: Signal enum is based on string to map signals on winapi events.
 */
 enum Signal : string
 {
@@ -37,7 +37,7 @@ enum Signal : string
     Quit      = "Quit",
     Interrupt = "Interrupt",
     HangUp    = "HangUp",
-    
+
     // Windows native requests
     Stop           = "Stop",
     Continue       = "Continue",
@@ -49,7 +49,7 @@ enum Signal : string
     NetBindEnable  = "NetBindEnable",
     NetBindRemove  = "NetBindRemove",
     ParamChange    = "ParamChange",
-    
+
 }
 
 /**
@@ -61,59 +61,59 @@ enum Signal : string
 *   enum LogRotatingSignal = "LogRotate".customSignal;
 *   --------
 */
-@nogc Signal customSignal(string name) @safe pure nothrow 
+@nogc Signal customSignal(string name) @safe pure nothrow
 {
     return cast(Signal)name;
 }
 
 /**
-*	Signal OR composition.
+*   Signal OR composition.
 *
-*	If you'd like to hook several signals by one handler, you
-*	can use the template in place of signal in $(B KeyValueList)
-*	signal map.
+*   If you'd like to hook several signals by one handler, you
+*   can use the template in place of signal in $(B KeyValueList)
+*   signal map.
 *
-*	In that case the handler should also accept a Signal value
-*	as it second parameter.
+*   In that case the handler should also accept a Signal value
+*   as it second parameter.
 */
 template Composition(Signals...)
-{    
-	alias signals = Signals;
-	
-	template opEqual(T...)
-	{
-		static if(T.length > 0 && isComposition!(T[0]))
-		{
-			enum opEqual = [signals] == [T[0].signals];
-		}
-		else enum opEqual = false;
-	}
+{
+    alias signals = Signals;
+
+    template opEqual(T...)
+    {
+        static if(T.length > 0 && isComposition!(T[0]))
+        {
+            enum opEqual = [signals] == [T[0].signals];
+        }
+        else enum opEqual = false;
+    }
 }
 
 /// Checks if $(B T) is a composition of signals
 template isComposition(alias T)
 {
-	static if(__traits(compiles, T.signals))
-	{
-		private template isSignal(T...)
-		{
-			static if(is(T[0]))
-			{
-				enum isSignal = is(T[0] : Signal);
-			}
-			else
-			{
-				enum isSignal = is(typeof(T[0]) : Signal);
-			}
-		}
-		
-		enum isComposition = allSatisfy!(isSignal, T.signals);
-	}
-	else enum isComposition = false;
+    static if(__traits(compiles, T.signals))
+    {
+        private template isSignal(T...)
+        {
+            static if(is(T[0]))
+            {
+                enum isSignal = is(T[0] : Signal);
+            }
+            else
+            {
+                enum isSignal = is(typeof(T[0]) : Signal);
+            }
+        }
+
+        enum isComposition = allSatisfy!(isSignal, T.signals);
+    }
+    else enum isComposition = false;
 }
 
 /**
-*   Template for describing daemon in the package. 
+*   Template for describing daemon in the package.
 *
 *   To describe new daemon you should set unique name
 *   and signal -> callbacks mapping.
@@ -132,7 +132,7 @@ template isComposition(alias T)
 *   -----------
 *   alias daemon = Daemon!(
 *       "DaemonizeExample1",
-*       
+*
 *       KeyValueList!(
 *           Signal.Terminate, (logger)
 *           {
@@ -146,15 +146,15 @@ template isComposition(alias T)
 *           }
 *       ),
 *
-*       (logger, shouldExit) 
+*       (logger, shouldExit)
 *       {
 *           // will stop the daemon in 5 minutes
 *           auto time = Clock.currSystemTick + cast(TickDuration)5.dur!"minutes";
 *           bool timeout = false;
 *           while(!shouldExit() && time > Clock.currSystemTick) {  }
-*       
+*
 *           logger.info("Exiting main function!");
-*       
+*
 *           return 0;
 *       }
 *   );
@@ -167,14 +167,14 @@ template Daemon(
 {
     enum daemonName = name;
     alias signalMap = pSignalMap;
-    alias mainFunc = pMainFunc; 
+    alias mainFunc = pMainFunc;
 }
 
 /// Duck typing $(B Daemon) description
 template isDaemon(alias T)
 {
     static if(__traits(compiles, T.daemonName) && __traits(compiles, T.signalMap)
-    	&& __traits(compiles, T.mainFunc))
+        && __traits(compiles, T.mainFunc))
         enum isDaemon = is(typeof(T.daemonName) == string);
     else
         enum isDaemon = false;
@@ -182,7 +182,7 @@ template isDaemon(alias T)
 
 /**
 *   Truncated description of daemon for use with $(B sendSignal) function.
-*   You need to pass a daemon $(B name) and a list of signals to $(B Signals) 
+*   You need to pass a daemon $(B name) and a list of signals to $(B Signals)
 *   expression list.
 *
 *   Example:
@@ -190,7 +190,7 @@ template isDaemon(alias T)
 *   // Full description of daemon
 *   alias daemon = Daemon!(
 *       "DaemonizeExample2",
-*       
+*
 *       KeyValueList!(
 *           Signal.Terminate, (logger)
 *           {
@@ -219,7 +219,7 @@ template isDaemon(alias T)
 *               return true;
 *           }
 *       ),
-*       (logger, shouldExit) 
+*       (logger, shouldExit)
 *       {
 *           // some code
 *       }
@@ -243,9 +243,9 @@ template DaemonClient(
     {
         enum isSignal = is(typeof(T[0]) == Signal) || isComposition!(T[0]);
     }
-    
+
     static assert(allSatisfy!(isSignal, Signals), "All values of Signals parameter have to be of Signal type!");
-    
+
     enum daemonName = name;
     alias signals = Signals;
 }
@@ -257,7 +257,7 @@ template isDaemonClient(alias T)
     {
         enum isSignal = is(typeof(T[0]) == Signal) || isComposition!(T[0]);
     }
-    
+
     static if(__traits(compiles, T.daemonName) && __traits(compiles, T.signals))
         enum isDaemonClient = is(typeof(T.daemonName) == string) && allSatisfy!(isSignal, T.signals);
     else

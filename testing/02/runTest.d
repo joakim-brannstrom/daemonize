@@ -10,7 +10,7 @@ enum testNumber = 2;
 void customShell(string command, lazy string error)
 {
     auto res = executeShell(command);
-    if(res.status != 0) throw new Exception(error ~ " " ~ res.output); 
+    if(res.status != 0) throw new Exception(error ~ " " ~ res.output);
 }
 
 void checkOutput(string filename, string expected)
@@ -19,7 +19,7 @@ void checkOutput(string filename, string expected)
 
     auto str = filename.readText;
     enforce(filename.readText == expected, "Expected '" ~ expected ~ "' but got '" ~ str ~ "'");
-    
+
     filename.remove;
 }
 
@@ -35,7 +35,7 @@ void main()
 {
     writeln("Running test ", testNumber, "... ");
     customShell("dub build", "Failed to build testing example!");
-    
+
     testPass("Test string 1", "test1");
     testPass("Test string 1", "test2");
     testPass("Test string 1", "test3");

@@ -15,30 +15,30 @@ version(Server)
 {
     alias daemon = Daemon!(
         "Test2",
-        
+
         KeyValueList!(
             Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (Logger logger, Signal signal)
             {
                 write("output.txt", "Test string 1");
-                return false; 
+                return false;
             },
             Signal.HangUp, (logger)
             {
                 write("output.txt", "Test string 2");
                 return false;
             }),
-        
+
         (logger, shouldExit) {
             while(!shouldExit()) {}
             return 0;
         }
     );
-    
+
     int main()
     {
-        return buildDaemon!daemon.run(new FileLogger("logfile.log")); 
+        return buildDaemon!daemon.run(new FileLogger("logfile.log"));
     }
-} 
+}
 else
 {
     alias daemon = DaemonClient!(
@@ -46,18 +46,18 @@ else
         Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop),
         Signal.HangUp
     );
-    
+
     int main()
     {
         alias client = buildDaemon!daemon;
-        
+
         Signal sig;
         version(Test1) sig = Signal.Terminate;
         version(Test2) sig = Signal.Quit;
         version(Test3) sig = Signal.Shutdown;
         version(Test4) sig = Signal.Stop;
         version(Test5) sig = Signal.HangUp;
-        
+
         client.sendSignal(new FileLogger("logfile.log"), sig);
         return 0;
     }

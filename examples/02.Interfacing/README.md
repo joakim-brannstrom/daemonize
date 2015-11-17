@@ -37,7 +37,7 @@ Daemon description is similar to [Example 01](https://github.com/NCrashed/daemon
     // Full description for daemon side
     alias daemon = Daemon!(
         "DaemonizeExample2",
-        
+
         KeyValueList!(
             Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger)
             {
@@ -66,27 +66,27 @@ Daemon description is similar to [Example 01](https://github.com/NCrashed/daemon
                 return true;
             }
         ),
-        
-        (logger, shouldExit) 
+
+        (logger, shouldExit)
         {
             // will stop the daemon in 5 minutes
             auto time = MonoTime.currTime + 5.dur!"minutes";
             while(!shouldExit() && time > MonoTime.currTime) {  }
-            
+
             logger.info("Exiting main function!");
-            
+
             return 0;
         }
     );
-    
+
     int main()
     {
         // For windows is important to use absolute path for logging
         version(Windows) string logFilePath = "C:\\logfile.log";
         else string logFilePath = "logfile.log";
-        
+
         auto logger = new FileLogger(logFilePath);
-        return buildDaemon!daemon.run(logger); 
+        return buildDaemon!daemon.run(logger);
     }
 ```
 
@@ -105,7 +105,7 @@ First you need a simplified description of the daemon (note: you can use full de
     );
 ```
 
-Using the $(daemon) description `daemonize` is able recalculate signals mapping. Sending signals 
+Using the $(daemon) description `daemonize` is able recalculate signals mapping. Sending signals
 now as simple as:
 ```D
     alias daemon = buildDaemon!client;

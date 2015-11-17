@@ -13,9 +13,9 @@ import daemonize.d;
 
 alias daemon = Daemon!(
     "Test1",
-    
+
     KeyValueList!(),
-    
+
     (logger, shouldExit) {
         write("output.txt", "Hello World!");
         return 0;
@@ -24,5 +24,5 @@ alias daemon = Daemon!(
 
 int main()
 {
-    return buildDaemon!daemon.run(new FileLogger("logfile.log")); 
+    return buildDaemon!daemon.run(new FileLogger("logfile.log"));
 }

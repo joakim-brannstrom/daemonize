@@ -20,7 +20,7 @@ one place:
 alias daemon = Daemon!(
 ```
 First goes daemon name, it's very important to choose unique name as the name is used as pid/lock
-file names (in linux if you don't specify your own paths) and as a service name in Windows. 
+file names (in linux if you don't specify your own paths) and as a service name in Windows.
 Daemonize prevents from running duplicating daemons (in linux you can change lock & pid file paths to
 override the behavior):
 ```D
@@ -28,10 +28,10 @@ override the behavior):
 ```
 Next goes info about signals that should be caught and processed. Some signals are occupied by druntime
 (SIGUSR1 and SIGUSR2 are taken by GC), daemonize only exports `Signal`s that is safe to catch. In Windows
-native linux signals are transformed to corresponding events (see also *here insert link to wiki*). 
+native linux signals are transformed to corresponding events (see also *here insert link to wiki*).
 
 You can bind one delegate for each native and custom signal (processed by realtime signals in linux). If
-you return false - `shouldExit` function in daemon main will return true. 
+you return false - `shouldExit` function in daemon main will return true.
 Also the daemon logger is passed into each signal handler:
 ```D
     // Setting associative map signal -> callbacks
@@ -59,9 +59,9 @@ Main function of the daemon goes further:
         auto time = Clock.currSystemTick + cast(TickDuration)5.dur!"minutes";
         bool timeout = false;
         while(!shouldExit() && time > Clock.currSystemTick) {  }
-        
+
         logger.info("Exiting main function!");
-        
+
         return 0;
     }
 ```
@@ -76,13 +76,13 @@ int main()
     // For windows is important to use absolute path for logging
     version(Windows) string logFilePath = "C:\\logfile.log";
     else string logFilePath = "logfile.log";
-    
+
     auto logger = new FileLogger(logFilePath);
 ```
 
 And then:
 ```D
-    return buildDaemon!daemon.run(logger); 
+    return buildDaemon!daemon.run(logger);
 }
 ```
 
