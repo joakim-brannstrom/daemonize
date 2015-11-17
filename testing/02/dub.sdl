@@ -1,0 +1,43 @@
+name  "daemonize-test-02"
+copyright "© 2014 Anton Gushcha"
+description  "Test for TravisCI"
+license "MIT"
+authors "Anton Gushcha (NCrashed) <ncrashed@gmail.com>"
+
+dependency "daemonize" path="../.."
+
+configuration "server" {
+    targetType "executable"
+    targetName "test2-daemon"
+    versions "Server"
+}
+
+configuration "test1" {
+    targetType "executable"
+    targetName "test2-client"
+    versions "Test1"
+}
+
+configuration "test2" {
+    targetType "executable"
+    targetName "test2-client"
+    versions "Test2"
+}
+
+configuration "test3" {
+    targetType "executable"
+    targetName "test2-client"
+    versions "Test3"
+}
+
+configuration "test4" {
+    targetType "executable"
+    targetName "test2-client"
+    versions "Test4"
+}
+
+configuration "test5" {
+    targetType "executable"
+    targetName "test2-client"
+    versions "Test5"
+}

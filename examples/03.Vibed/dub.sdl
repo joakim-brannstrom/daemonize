@@ -1,0 +1,9 @@
+name "daemonize-example-03-vibed"
+copyright "© 2014 Anton Gushcha"
+description "Demostrates integration with vibe.d"
+license "MIT"
+authors "Anton Gushcha (NCrashed) <ncrashed@gmail.com>"
+versions "VibeCustomMain"
+
+dependency "daemonize" path="../.."
+dependency "vibe-d" version="~master"
