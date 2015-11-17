@@ -7,8 +7,8 @@
 module test02;
 
 import std.file;
+import std.experimental.logger;
 
-import dlogg.strict;
 import daemonize.d;
 
 version(Server)
@@ -17,7 +17,7 @@ version(Server)
         "Test2",
         
         KeyValueList!(
-            Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (shared ILogger logger, Signal signal)
+            Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (Logger logger, Signal signal)
             {
                 write("output.txt", "Test string 1");
                 return false; 
@@ -36,7 +36,7 @@ version(Server)
     
     int main()
     {
-        return buildDaemon!daemon.run(new shared StrictLogger("logfile.log")); 
+        return buildDaemon!daemon.run(new FileLogger("logfile.log")); 
     }
 } 
 else
@@ -58,7 +58,7 @@ else
         version(Test4) sig = Signal.Stop;
         version(Test5) sig = Signal.HangUp;
         
-        client.sendSignal(new shared StrictLogger("logfile.log"), sig);
+        client.sendSignal(new FileLogger("logfile.log"), sig);
         return 0;
     }
 }

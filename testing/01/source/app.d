@@ -7,8 +7,8 @@
 module test01;
 
 import std.file;
+import std.experimental.logger;
 
-import dlogg.strict;
 import daemonize.d;
 
 alias daemon = Daemon!(
@@ -24,5 +24,5 @@ alias daemon = Daemon!(
 
 int main()
 {
-    return buildDaemon!daemon.run(new shared StrictLogger("logfile.log")); 
+    return buildDaemon!daemon.run(new FileLogger("logfile.log")); 
 }

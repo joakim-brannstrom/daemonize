@@ -12,7 +12,7 @@
 */
 module example03;
 
-import dlogg.strict;
+import std.experimental.logger;
 import daemonize.d;
 
 // cannot use vibe.d due symbol clash for logging
@@ -27,7 +27,7 @@ alias daemon = Daemon!(
     KeyValueList!(
         Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger)
         {
-            logger.logInfo("Exiting...");
+            logger.info("Exiting...");
             
             // No need to force exit here
             // main will stop after the call 
@@ -36,7 +36,7 @@ alias daemon = Daemon!(
         },
         Signal.HangUp, (logger)
         {
-            logger.logInfo("Hello World!");
+            logger.info("Hello World!");
             return true;
         }
     ),
@@ -44,7 +44,7 @@ alias daemon = Daemon!(
     (logger, shouldExit) {
         // Default vibe initialization
         auto settings = new HTTPServerSettings;
-        settings.port = 8080;
+        settings.port = 33442;
         settings.bindAddresses = ["127.0.0.1"];
 
         listenHTTP(settings, &handleRequest);
@@ -78,6 +78,6 @@ int main()
     version(Windows) enum logFileName = "C:\\logfile.log";
     else enum logFileName = "logfile.log";
 	
-    auto logger = new shared StrictLogger(logFileName);
+    auto logger = new FileLogger(logFileName);
     return buildDaemon!daemon.run(logger); 
 }

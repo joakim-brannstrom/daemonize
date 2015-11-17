@@ -10,13 +10,15 @@
 module example02;
 
 import std.datetime;
+import std.experimental.logger;
 
-import dlogg.strict;
 import daemonize.d;
 
 // Describing custom signals
 enum RotateLogSignal = "RotateLog".customSignal;
 enum DoSomethingSignal = "DoSomething".customSignal;
+
+shared string logFilePath;
 
 version(DaemonServer)
 {
@@ -27,23 +29,28 @@ version(DaemonServer)
         KeyValueList!(
             Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger)
             {
-                logger.logInfo("Exiting...");
+                logger.info("Exiting...");
                 return false;
             },
             Signal.HangUp, (logger)
             {
-                logger.logInfo("Hello World!");
+                logger.info("Hello World!");
                 return true;
             },
             RotateLogSignal, (logger)
             {
-                logger.logInfo("Rotating log!");
-                logger.reload;
+                logger.info("Rotating log!");
+                destroy(logger);
+
+                import std.file;
+                rename(logFilePath, logFilePath ~ ".old");
+                setLogger(new FileLogger(.logFilePath));
+
                 return true;
             },
             DoSomethingSignal, (logger)
             {
-                logger.logInfo("Doing something...");
+                logger.info("Doing something...");
                 return true;
             }
         ),
@@ -53,6 +60,7 @@ version(DaemonServer)
             // will stop the daemon in 5 minutes
             auto time = MonoTime.currTime + 5.dur!"minutes";
             while(!shouldExit() && time > MonoTime.currTime) {  }
+            logger.info("Exiting main function!");
             
             return 0;
         }
@@ -63,8 +71,9 @@ version(DaemonServer)
         // For windows is important to use absolute path for logging
         version(Windows) string logFilePath = "C:\\logfile.log";
         else string logFilePath = "logfile.log";
+        .logFilePath = logFilePath;
 		
-        auto logger = new shared StrictLogger(logFilePath);
+        auto logger = new FileLogger(logFilePath);
         return buildDaemon!daemon.run(logger); 
     }
 }
@@ -86,7 +95,7 @@ version(DaemonClient)
     
     void main()
     {
-    	auto logger = new shared StrictLogger("client.log");
+    	auto logger = new FileLogger("client.log");
     	
     	alias daemon = buildDaemon!client;
     	alias send = daemon.sendSignal;

@@ -15,8 +15,8 @@
 module example01;
 
 import std.datetime;
+import std.experimental.logger;
 
-import dlogg.strict;
 import daemonize.d;
 
 // First you need to describe your daemon via template
@@ -29,12 +29,12 @@ alias daemon = Daemon!(
         // delegate can take additional argument to know which signal is caught
         Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger, signal)
         {
-            logger.logInfo("Exiting...");
+            logger.info("Exiting...");
             return false; // returning false will terminate daemon
         },
         Composition!(Signal.HangUp,Signal.Pause,Signal.Continue), (logger)
         {
-            logger.logInfo("Hello World!");
+            logger.info("Hello World!");
             return true; // continue execution
         }
     ),
@@ -45,7 +45,7 @@ alias daemon = Daemon!(
         auto time = MonoTime.currTime + 5.dur!"minutes";
         while(!shouldExit() && time > MonoTime.currTime) {  }
         
-        logger.logInfo("Exiting main function!");
+        logger.info("Exiting main function!");
         
         return 0;
     }
@@ -57,5 +57,5 @@ int main()
     version(Windows) string logFilePath = "C:\\logfile.log";
     else string logFilePath = "logfile.log";
 	
-    return buildDaemon!daemon.run(new shared StrictLogger(logFilePath)); 
+    return buildDaemon!daemon.run(new FileLogger(logFilePath)); 
 }
