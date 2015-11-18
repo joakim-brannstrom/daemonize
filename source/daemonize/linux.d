@@ -140,7 +140,7 @@ template buildDaemon(alias DaemonInfo)
             , string pidFilePath = "", string lockFilePath = ""
             , int userId = -1, int groupId = -1)
         {        
-            // Local locak file
+            // Local lock file
             if(lockFilePath == "")
             {
                 lockFilePath = defaultLockFile(DaemonInfo.daemonName);  
