@@ -552,7 +552,7 @@ template buildDaemon(alias DaemonInfo)
         /// Tries to read a number from $(B filename)
         int readPidFile(string filename)
         {
-            std.stdio.writeln(filename);
+            savedLogger.trace(filename);
             if(!filename.exists)
                 throw new LoggedException("Cannot find pid file at '" ~ filename ~ "'!");
             
