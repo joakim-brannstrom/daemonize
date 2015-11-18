@@ -124,7 +124,7 @@ template isComposition(alias T)
 *   $(B pSignalMap) is a $(B KeyValueList) template where
 *   keys are $(B Signal) values and values are delegates of type:
 *   ----------
-*   bool delegate(shared ILogger)
+*   bool delegate(Logger)
 *   ----------
 *   If the delegate returns $(B false), daemon terminates.
 *
@@ -136,12 +136,12 @@ template isComposition(alias T)
 *       KeyValueList!(
 *           Signal.Terminate, (logger)
 *           {
-*               logger.logInfo("Exiting...");
+*               logger.info("Exiting...");
 *               return false; // returning false will terminate daemon
 *           },
 *           Signal.HangUp, (logger)
 *           {
-*               logger.logInfo("Hello World!");
+*               logger.info("Hello World!");
 *               return true; // continue execution
 *           }
 *       ),
@@ -153,7 +153,7 @@ template isComposition(alias T)
 *           bool timeout = false;
 *           while(!shouldExit() && time > Clock.currSystemTick) {  }
 *       
-*           logger.logInfo("Exiting main function!");
+*           logger.info("Exiting main function!");
 *       
 *           return 0;
 *       }
@@ -194,23 +194,28 @@ template isDaemon(alias T)
 *       KeyValueList!(
 *           Signal.Terminate, (logger)
 *           {
-*               logger.logInfo("Exiting...");
+*               logger.info("Exiting...");
 *               return false;
 *          },
 *           Signal.HangUp, (logger)
 *           {
-*               logger.logInfo("Hello World!");
+*               logger.info("Hello World!");
 *               return true;
 *           },
 *           RotateLogSignal, (logger)
 *           {
-*               logger.logInfo("Rotating log!");
-*               logger.reload;
+*               logger.info("Rotating log!");
+*               destroy(logger);
+*
+*               import std.file;
+*               rename(logFilePath, logFilePath ~ ".old");
+*               setLogger(new FileLogger(.logFilePath));
+*
 *               return true;
 *           },
 *           DoSomethingSignal, (logger)
 *           {
-*               logger.logInfo("Doing something...");
+*               logger.info("Doing something...");
 *               return true;
 *           }
 *       ),

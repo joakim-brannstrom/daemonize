@@ -23,6 +23,7 @@ import std.path;
 import std.process;
 import std.stdio;
 import std.string;
+import std.experimental.logger : Logger;
 
 import std.c.linux.linux;
 import std.c.stdlib;
@@ -31,7 +32,6 @@ import core.sys.linux.errno;
 import daemonize.daemon;
 import daemonize.string;
 import daemonize.keymap;
-import dlogg.log;
 
 /// Returns local pid file that is used when no custom one is specified
 string defaultPidFile(string daemonName)
@@ -43,6 +43,13 @@ string defaultPidFile(string daemonName)
 string defaultLockFile(string daemonName)
 {
     return expandTilde(buildPath("~", ".daemonize", daemonName ~ ".lock"));  
+}
+
+private Logger savedLogger;
+
+/// Set logger used by daemon and callback
+void setLogger(Logger logger) {
+    savedLogger = logger;
 }
 
 /// Checks is $(B sig) is actually built-in
@@ -96,12 +103,12 @@ string defaultLockFile(string daemonName)
 *       KeyValueList!(
 *           Composition!(Signal.Terminate, Signal.Quit, Signal.Shutdown, Signal.Stop), (logger, signal)
 *           {
-*               logger.logInfo("Exiting...");
+*               logger.info("Exiting...");
 *               return false; // returning false will terminate daemon
 *           },
 *           Signal.HangUp, (logger)
 *           {
-*               logger.logInfo("Hello World!");
+*               logger.info("Hello World!");
 *               return true; // continue execution
 *           }
 *       ),
@@ -113,7 +120,7 @@ string defaultLockFile(string daemonName)
 *           bool timeout = false;
 *           while(!shouldExit() && time > Clock.currSystemTick) {  }
 *           
-*           logger.logInfo("Exiting main function!");
+*           logger.info("Exiting main function!");
 *           
 *           return 0;
 *       }
@@ -129,7 +136,7 @@ template buildDaemon(alias DaemonInfo)
  
     static if(isDaemon!DaemonInfo)
     {
-        int run(shared ILogger logger
+        int run(Logger logger
             , string pidFilePath = "", string lockFilePath = ""
             , int userId = -1, int groupId = -1)
         {        
@@ -160,7 +167,7 @@ template buildDaemon(alias DaemonInfo)
             pid = fork();
             if(pid < 0)
             {
-                savedLogger.logError("Failed to start daemon: fork failed");
+                savedLogger.error("Failed to start daemon: fork failed");
                 
                 // Deleting fresh lockfile
                 deleteLockFile(lockFilePath);
@@ -174,7 +181,7 @@ template buildDaemon(alias DaemonInfo)
                 // handling pidfile if any
                 writePidFile(pidFilePath, pid, userId);
     
-                savedLogger.logInfo(text("Daemon is detached with pid ", pid));
+                savedLogger.info("Daemon is detached with pid ", pid);
                 terminate(EXIT_SUCCESS, false);
             }
             
@@ -183,7 +190,6 @@ template buildDaemon(alias DaemonInfo)
             
             // Change the file mode mask and suppress printing to console
             umask(0);
-            savedLogger.minOutputLevel(LoggingLevel.Muted);
             
             // Handling of deleting pid file
             scope(exit) deletePidFile(pidFilePath);
@@ -225,11 +231,11 @@ template buildDaemon(alias DaemonInfo)
             }
     
             int code = EXIT_FAILURE;
-            try code = DaemonInfo.mainFunc(savedLogger, &shouldExitFunc );
+            try code = DaemonInfo.mainFunc(logger, &shouldExitFunc );
             catch (Throwable th) 
             {
-                savedLogger.logError(text("Catched unhandled throwable at daemon level at ", th.file, ": ", th.line, " : ", th.msg));
-                savedLogger.logError("Terminating...");
+                savedLogger.error("Catched unhandled throwable at daemon level at ", th.file, ": ", th.line, " : ", th.msg);
+                savedLogger.error("Terminating...");
             } 
             finally 
             {
@@ -257,10 +263,10 @@ template buildDaemon(alias DaemonInfo)
     *
     *   See_Also: $(B sendSignal) version of the function that takes daemon name from $(B DaemonInfo). 
     */
-    void sendSignalDynamic(shared ILogger logger, string daemonName, Signal signal, string pidFilePath = "")
+    void sendSignalDynamic(Logger logger, string daemonName, Signal signal, string pidFilePath = "")
     {
         savedLogger = logger;
-        
+
         // Try to find at default place
         if(pidFilePath == "")
         {
@@ -270,13 +276,15 @@ template buildDaemon(alias DaemonInfo)
         // Reading file
         int pid = readPidFile(pidFilePath);
 
-        logger.logInfo(text("Sending signal ", signal, " to daemon ", daemonName, " (pid ", pid, ")"));
+        logger.info("Sending signal ", signal, " to daemon ", daemonName, " (pid ", pid, ")");
         kill(pid, daemon.mapSignal(signal));
     }
     
     /// ditto
-    void sendSignal(shared ILogger logger, Signal signal, string pidFilePath = "")
+    void sendSignal(Logger logger, Signal signal, string pidFilePath = "")
     {
+        savedLogger = logger;
+
         sendSignalDynamic(logger, DaemonInfo.daemonName, signal, pidFilePath);
     }
 
@@ -292,20 +300,25 @@ template buildDaemon(alias DaemonInfo)
     {
         @safe nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
         {
-            savedLogger.logError(msg);
+            try {
+                savedLogger.error(msg);
+            } catch (Exception ex) {
+            }
             super(msg, file, line, next);
         }
     
         @safe nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
         {
-            savedLogger.logError(msg);
+            try {
+                savedLogger.error(msg);
+            } catch (Exception ex) {
+            }
             super(msg, file, line, next);
         }
     }
     
     private
     {   
-        shared ILogger savedLogger;
         string savedPidFilePath;
         string savedLockFilePath;
         
@@ -348,7 +361,10 @@ template buildDaemon(alias DaemonInfo)
                                 
                             } catch(Throwable th) 
                             {
-                                savedLogger.logError(text("Caught at signal ", subsignal," handler: ", th));
+                                try {
+                                    savedLogger.error("Caught at signal ", subsignal," handler: ", th);
+                                } catch (Exception ex) {
+                                }
                             }
                         }
                     }
@@ -375,7 +391,10 @@ template buildDaemon(alias DaemonInfo)
                         } 
                         catch(Throwable th) 
                         {
-                            savedLogger.logError(text("Caught at signal ", signal," handler: ", th));
+                            try {
+                                savedLogger.error("Caught at signal ", signal," handler: ", th);
+                            } catch (Exception ex) {
+                            }
                         }
                     }
                 }
@@ -391,8 +410,8 @@ template buildDaemon(alias DaemonInfo)
         {
             if(path.exists)
             {
-                savedLogger.logError(text("There is another daemon instance running: lock file is '",path,"'"));
-                savedLogger.logInfo("Remove the file if previous instance if daemon has crashed");
+                savedLogger.error("There is another daemon instance running: lock file is '",path,"'");
+                savedLogger.info("Remove the file if previous instance if daemon has crashed");
                 terminate(-1);
             } else
             {
@@ -407,7 +426,7 @@ template buildDaemon(alias DaemonInfo)
             // if root, change permission on file to be able to remove later
             if (getuid() == 0 && userid >= 0) 
             {
-                savedLogger.logDebug("Changing permissions for lock file: ", path);
+                savedLogger.trace("Changing permissions for lock file: ", path);
                 executeShell(text("chown ", userid," ", path.dirName));
                 executeShell(text("chown ", userid," ", path));
             }
@@ -426,7 +445,7 @@ template buildDaemon(alias DaemonInfo)
                 }
                 catch(Exception e)
                 {
-                    savedLogger.logWarning(text("Failed to remove lock file: ", path));
+                    savedLogger.warning(text("Failed to remove lock file: ", path));
                     return;
                 }
             }
@@ -452,13 +471,13 @@ template buildDaemon(alias DaemonInfo)
                 // if root, change permission on file to be able to remove later
                 if (getuid() == 0 && userid >= 0) 
                 {
-                    savedLogger.logDebug("Changing permissions for pid file: ", path);
+                    savedLogger.trace("Changing permissions for pid file: ", path);
                     executeShell(text("chown ", userid," ", path.dirName));
                     executeShell(text("chown ", userid," ", path));
                 }
             } catch(Exception e)
             {
-                savedLogger.logWarning(text("Failed to write pid file: ", path));
+                savedLogger.warning("Failed to write pid file: ", path);
                 return;
             }
         }
@@ -471,7 +490,7 @@ template buildDaemon(alias DaemonInfo)
                 path.remove();
             } catch(Exception e)
             {
-                savedLogger.logWarning(text("Failed to remove pid file: ", path));
+                savedLogger.warning("Failed to remove pid file: ", path);
                 return;
             }
         }
@@ -485,21 +504,21 @@ template buildDaemon(alias DaemonInfo)
             {
                 if(groupid < 0 || userid < 0)
                 {
-                    savedLogger.logWarning("Running as root, but doesn't specified groupid and/or userid for"
+                    savedLogger.warning("Running as root, but doesn't specified groupid and/or userid for"
                         " privileges lowing!");
                     return;
                 }
                 
-                savedLogger.logInfo("Running as root, dropping privileges...");
+                savedLogger.info("Running as root, dropping privileges...");
                 // process is running as root, drop privileges 
                 if (setgid(groupid) != 0)
                 {
-                    savedLogger.logError(text("setgid: Unable to drop group privileges: ", strerror(errno).fromStringz));
+                    savedLogger.error("setgid: Unable to drop group privileges: ", strerror(errno).fromStringz);
                     assert(false);
                 }
                 if (setuid(userid) != 0)
                 {
-                    savedLogger.logError(text("setuid: Unable to drop user privileges: ", strerror(errno).fromStringz));
+                    savedLogger.error("setuid: Unable to drop user privileges: ", strerror(errno).fromStringz);
                     assert(false);
                 }
             }
@@ -510,8 +529,14 @@ template buildDaemon(alias DaemonInfo)
         {
             if(isDaemon)
             {
-                savedLogger.logInfo("Daemon is terminating with code: " ~ to!string(code));
-                savedLogger.finalize();
+                try {
+                    savedLogger.info("Daemon is terminating with code: " ~ to!string(code));
+                } catch (Exception ex) {
+                }
+                try {
+                    destroy(savedLogger);
+                } catch (Exception ex) {
+                }
             
                 gc_term();
                 try {

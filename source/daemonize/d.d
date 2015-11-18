@@ -8,7 +8,7 @@ module daemonize.d;
 
 public
 {
-    import dlogg.log;
+    import std.experimental.logger;
     import daemonize.daemon;
     import daemonize.keymap;
 }
