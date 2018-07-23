@@ -25,8 +25,8 @@ import std.stdio;
 import std.string;
 import std.experimental.logger : Logger;
 
-import std.c.linux.linux;
-import std.c.stdlib;
+import core.sys.posix.stdlib;
+import core.sys.posix.unistd;
 import core.sys.linux.errno;
     
 import daemonize.daemon;
@@ -504,7 +504,7 @@ template buildDaemon(alias DaemonInfo)
             {
                 if(groupid < 0 || userid < 0)
                 {
-                    savedLogger.warning("Running as root, but doesn't specified groupid and/or userid for"
+                    savedLogger.warning("Running as root, but doesn't specified groupid and/or userid for" ~
                         " privileges lowing!");
                     return;
                 }
